@@ -5,10 +5,10 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.34.0",
+    "@anthropic-ai/sdk": "^0.92.0",
     "@supabase/supabase-js": "^2.45.0",
     "formidable": "^3.5.1",
     "pdf-parse": "^1.1.1"
