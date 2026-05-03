@@ -3,6 +3,9 @@
   "buildCommand": null,
   "outputDirectory": "public",
   "framework": null,
+  "functions": {
+       "api/*.js": { "maxDuration": 60 }
+     },
   "rewrites": [
     { "source": "/", "destination": "/index.html" }
   ],
