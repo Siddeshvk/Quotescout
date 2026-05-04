@@ -32,7 +32,7 @@ import pdf from 'pdf-parse';
 export const config = {
   api: {
     bodyParser: false,
-    sizeLimit: '25mb',
+    sizeLimit: '50mb',
   },
 };
 
@@ -183,14 +183,27 @@ export default async function handler(req, res) {
   }
 
   const startTime = Date.now();
-  let pdfBuffer = null;
-  let extractedText = '';
+  let pdfBuffers = []; // [{ buffer, name, label, size, pages, extractedText }]
   let logId = null;
+
+  // Label dropdown values from frontend → human-readable names for the prompt
+  const LABEL_DISPLAY = {
+    drawing: 'Drawing',
+    spec_sheet: 'Spec Sheet',
+    purchase_order: 'Purchase Order',
+    quality_clauses: 'Quality Clauses',
+    fai_form: 'FAI / PPAP Form',
+    other: 'Other',
+    '': 'Unlabeled',
+  };
 
   try {
     // ----- 1. Parse multipart form -----
     const form = formidable({
-      maxFileSize: 25 * 1024 * 1024, // 25 MB
+      maxFileSize: 50 * 1024 * 1024,           // 50 MB per file (also serves as total cap)
+      maxTotalFileSize: 50 * 1024 * 1024,      // 50 MB total across the package
+      maxFiles: 8,
+      multiples: true,
       keepExtensions: true,
     });
 
@@ -198,46 +211,84 @@ export default async function handler(req, res) {
 
     const email = (fields.email?.[0] || '').trim().toLowerCase();
     const companyName = (fields.company_name?.[0] || '').trim();
-    const file = files.file?.[0];
+
+    // formidable returns either a single object or an array under `files.files`
+    const rawFiles = files.files
+      ? (Array.isArray(files.files) ? files.files : [files.files])
+      : [];
+
+    // Labels arrive as a parallel array — same order as files
+    const labels = fields.labels
+      ? (Array.isArray(fields.labels) ? fields.labels : [fields.labels])
+      : [];
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required.' });
     }
-    if (!file) {
-      return res.status(400).json({ error: 'File is required.' });
+    if (rawFiles.length === 0) {
+      return res.status(400).json({ error: 'At least one file is required.' });
     }
-    if (file.mimetype !== 'application/pdf' && !file.originalFilename?.toLowerCase().endsWith('.pdf')) {
-      return res.status(400).json({ error: 'PDF only. Export your CAD as PDF first.' });
-    }
-
-    // ----- 2. Read file into memory, then immediately schedule deletion -----
-    pdfBuffer = fs.readFileSync(file.filepath);
-    // Delete the temp file from disk RIGHT NOW
-    try { fs.unlinkSync(file.filepath); } catch (e) { /* ignore */ }
-
-    // ----- 3. Best-effort text extraction (for ITAR pre-screen + page count) -----
-    // If extraction fails or yields little text, that's OK — Claude will OCR the
-    // PDF directly via vision. We only use this for the ITAR pre-check and metadata.
-    let pageCount = 0;
-    try {
-      const pdfData = await pdf(pdfBuffer);
-      extractedText = pdfData.text || '';
-      pageCount = pdfData.numpages || 0;
-    } catch (err) {
-      // Scanned/image-only PDFs may fail here. Proceed — Claude handles vision.
-      console.log('Text extraction yielded little or none; relying on Claude vision.');
+    if (rawFiles.length > 8) {
+      return res.status(400).json({ error: 'Maximum 8 files per RFQ package.' });
     }
 
-    // ----- 4. ITAR / defense work block -----
-    if (containsITARMarkers(extractedText)) {
-      // Log the rejection but do not analyze
+    // ----- 2. Read each file into memory, validate, run text pre-extraction -----
+    let totalSize = 0;
+    let totalPages = 0;
+    let combinedTextForITAR = '';
+
+    for (let i = 0; i < rawFiles.length; i++) {
+      const file = rawFiles[i];
+
+      if (file.mimetype !== 'application/pdf' &&
+          !file.originalFilename?.toLowerCase().endsWith('.pdf')) {
+        return res.status(400).json({
+          error: `"${file.originalFilename}" is not a PDF. PDF only in V1 — export your CAD as PDF first.`,
+        });
+      }
+
+      const buffer = fs.readFileSync(file.filepath);
+      try { fs.unlinkSync(file.filepath); } catch (e) { /* ignore */ }
+
+      // Best-effort text extraction for ITAR pre-screen and metadata.
+      // If extraction fails (scanned/image-only), Claude vision handles it later.
+      let pageCount = 0;
+      let extractedText = '';
+      try {
+        const pdfData = await pdf(buffer);
+        extractedText = pdfData.text || '';
+        pageCount = pdfData.numpages || 0;
+      } catch (err) {
+        console.log(`Text extraction failed for ${file.originalFilename}; relying on Claude vision.`);
+      }
+
+      pdfBuffers.push({
+        buffer,
+        name: file.originalFilename || `document-${i + 1}.pdf`,
+        label: labels[i] || '',
+        size: file.size,
+        pages: pageCount,
+        extractedText,
+      });
+
+      totalSize += file.size;
+      totalPages += pageCount;
+      combinedTextForITAR += extractedText + '\n';
+    }
+
+    if (totalSize > 50 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Total package size exceeds 50 MB. Remove a file or compress.' });
+    }
+
+    // ----- 3. ITAR / defense work block (text-based pre-screen) -----
+    if (containsITARMarkers(combinedTextForITAR)) {
       try {
         await supabase.from('analysis_logs').insert({
           email,
           company_name: companyName,
-          file_name: file.originalFilename || 'unknown.pdf',
-          file_size_bytes: file.size,
-          file_pages: pageCount,
+          file_name: pdfBuffers.map(p => p.name).join(' + '),
+          file_size_bytes: totalSize,
+          file_pages: totalPages,
           status: 'rejected_itar',
           error_message: 'Document contains ITAR/EAR/defense markers',
           file_deleted_at: new Date().toISOString(),
@@ -245,53 +296,61 @@ export default async function handler(req, res) {
         });
       } catch (e) { /* logging failure shouldn't block response */ }
 
-      // Clear buffer
-      pdfBuffer = null;
-      extractedText = '';
+      pdfBuffers = [];
 
       return res.status(400).json({
         error: 'This document contains markers (ITAR, EAR, DDTC, MIL-SPEC defense, classified, or CUI) that indicate it may be export-controlled or defense-related work. QuoteScout V1 is for non-ITAR commercial work only. ITAR-cleared infrastructure is planned for Phase 4 (Month 18+).',
       });
     }
 
-    // ----- 5. Call Claude API with PDF as a document attachment -----
-    // Sending the PDF directly (rather than extracted text) lets Claude OCR
-    // scanned drawings, read title blocks, parse tables, and see image content.
-    // Cost trade-off: ~3-5x more tokens than text-only, but works on every PDF type.
-    const pdfBase64 = pdfBuffer.toString('base64');
+    // ----- 4. Build the multi-document content array for Claude -----
+    // Pattern: [text-header-1, document-1, text-header-2, document-2, ..., final-instruction]
+    // The text headers tell Claude which document is which (label + filename), enabling
+    // cross-document reasoning per the system prompt.
+    const content = [];
 
-    const userPrompt = 'Analyze the attached RFQ document for manufacturing risks. ' +
-      'The document may be a text-based PDF, a scanned image, a CAD drawing, or a mix. ' +
-      'Read everything: title blocks, revision blocks, notes, dimensions, callouts, stamps. ' +
-      'Return the structured JSON risk report per the schema in your instructions.';
+    if (pdfBuffers.length > 1) {
+      content.push({
+        type: 'text',
+        text: `This RFQ package contains ${pdfBuffers.length} documents. Treat them as ONE package. Cross-reference across them. Surface conflicts between documents as flags.\n`,
+      });
+    }
 
+    pdfBuffers.forEach((entry, idx) => {
+      const labelDisplay = LABEL_DISPLAY[entry.label] || 'Unlabeled';
+      content.push({
+        type: 'text',
+        text: `=== Document ${idx + 1} of ${pdfBuffers.length}: "${entry.name}" (labeled: ${labelDisplay}) ===`,
+      });
+      content.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: entry.buffer.toString('base64'),
+        },
+      });
+    });
+
+    content.push({
+      type: 'text',
+      text: pdfBuffers.length > 1
+        ? 'Analyze all of the above documents as one RFQ package. Cross-reference across documents. Read everything: title blocks, revision blocks, notes, dimensions, callouts, stamps, attached specs. Return the structured JSON risk report per the schema in your instructions.'
+        : 'Analyze the attached RFQ document for manufacturing risks. The document may be a text-based PDF, a scanned image, a CAD drawing, or a mix. Read everything: title blocks, revision blocks, notes, dimensions, callouts, stamps. Return the structured JSON risk report per the schema in your instructions.',
+    });
+
+    // ----- 5. Call Claude API -----
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            },
-            { type: 'text', text: userPrompt },
-          ],
-        },
-      ],
+      messages: [{ role: 'user', content }],
     });
 
-    // ----- 7. Clear text from memory -----
-    extractedText = '';
-    pdfBuffer = null;
+    // ----- 6. Clear PDF buffers from memory -----
+    pdfBuffers = [];
 
-    // ----- 8. Parse the AI response -----
+    // ----- 7. Parse the AI response -----
     let aiText = '';
     if (Array.isArray(response.content)) {
       for (const block of response.content) {
@@ -299,7 +358,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Strip markdown fences if the model wrapped the JSON
     aiText = aiText.trim();
     if (aiText.startsWith('```')) {
       aiText = aiText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
@@ -309,23 +367,21 @@ export default async function handler(req, res) {
     try {
       parsed = JSON.parse(aiText);
     } catch (e) {
-      // If parsing fails, return a graceful error
       console.error('Failed to parse AI JSON:', aiText.slice(0, 500));
       return res.status(500).json({
         error: 'AI returned malformed response. Please try again. If this persists, the document may be too unusual for our V1 prompts.',
       });
     }
 
-    // Handle vision-detected ITAR (Claude saw export-control markers in title blocks,
-    // stamps, or notes that our text-only ITAR pre-check missed)
+    // Handle vision-detected ITAR
     if (parsed.itar_detected === true) {
       try {
         await supabase.from('analysis_logs').insert({
           email,
           company_name: companyName,
-          file_name: file.originalFilename || 'unknown.pdf',
-          file_size_bytes: file.size,
-          file_pages: pageCount,
+          file_name: 'package',
+          file_size_bytes: totalSize,
+          file_pages: totalPages,
           status: 'rejected_itar',
           error_message: 'Vision-detected ITAR/export-control markers',
           file_deleted_at: new Date().toISOString(),
@@ -338,7 +394,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ----- 9. Compute counts (defensive) -----
+    // ----- 8. Compute counts (defensive) -----
     const counts = { red: 0, amber: 0, yellow: 0, purple: 0 };
     (parsed.flags || []).forEach(f => {
       const s = (f.severity || 'PURPLE').toLowerCase();
@@ -346,7 +402,7 @@ export default async function handler(req, res) {
     });
     parsed.flagCounts = counts;
 
-    // ----- 10. Log metadata to Supabase (no file content) -----
+    // ----- 9. Log metadata to Supabase (no file content) -----
     const fileDeletedAt = new Date().toISOString();
     const processingMs = Date.now() - startTime;
 
@@ -356,9 +412,9 @@ export default async function handler(req, res) {
         .insert({
           email,
           company_name: companyName,
-          file_name: file.originalFilename || 'unknown.pdf',
-          file_size_bytes: file.size,
-          file_pages: pageCount,
+          file_name: rawFiles.map(f => f.originalFilename || 'unknown.pdf').join(' + '),
+          file_size_bytes: totalSize,
+          file_pages: totalPages,
           flag_count_red: counts.red,
           flag_count_amber: counts.amber,
           flag_count_yellow: counts.yellow,
@@ -374,24 +430,22 @@ export default async function handler(req, res) {
 
       if (!logErr && log) logId = log.id;
     } catch (e) {
-      // Logging failure should NOT block returning the analysis to the user
       console.error('Supabase log failed:', e.message);
     }
 
-    // ----- 11. Return result -----
+    // ----- 10. Return result -----
     return res.status(200).json({
       ...parsed,
       analysisId: logId,
       fileDeletedAt,
       modelUsed: MODEL,
       processingMs,
+      fileCount: rawFiles.length,
     });
 
   } catch (err) {
     console.error('analyze.js error:', err);
-    // Always clear sensitive data on error
-    pdfBuffer = null;
-    extractedText = '';
+    pdfBuffers = [];
     return res.status(500).json({
       error: 'Analysis failed. Please try again. If this persists, contact the QuoteScout team.',
       detail: process.env.NODE_ENV === 'development' ? err.message : undefined,
