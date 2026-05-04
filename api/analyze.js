@@ -1,23 +1,25 @@
 // =====================================================================
 // QuoteScout — /api/analyze
 // =====================================================================
-// This is the heart of the product. It receives a PDF upload, extracts
-// the text, sends it to Claude API for risk analysis, logs metadata to
-// Supabase, and returns a structured risk report.
+// This is the heart of the product. It receives a PDF upload, sends it
+// directly to Claude (which does its own OCR/vision processing), logs
+// metadata to Supabase, and returns a structured risk report.
 //
 // File flow:
 //   1. PDF arrives via multipart/form-data
-//   2. Text extracted in memory (pdf-parse)
-//   3. ITAR keyword check — block defense work
-//   4. Claude API call with the master risk-surfacing prompt
-//   5. Response parsed as JSON
-//   6. Metadata logged to Supabase (NOT the file content)
-//   7. PDF buffer cleared from memory
-//   8. Response returned to user
+//   2. Best-effort text extraction (pdf-parse) for ITAR pre-screening + page count
+//      — if extraction fails (scanned/image-only PDF), we proceed anyway
+//   3. ITAR keyword check on any extracted text — block defense work early
+//   4. PDF sent as base64 document directly to Claude API (handles text + scans + drawings)
+//   5. System prompt also instructs Claude to bail on ITAR markers it sees in vision
+//   6. Response parsed as JSON
+//   7. Metadata logged to Supabase (NOT the file content)
+//   8. PDF buffer cleared from memory
+//   9. Response returned to user
 //
 // What we store in Supabase: email, filename, file size, page count,
 // flag counts, AI model, processing time, deletion timestamp.
-// What we do NOT store: the PDF, the extracted text, the AI's full output.
+// What we do NOT store: the PDF, extracted text, the AI's full output.
 // =====================================================================
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -127,7 +129,11 @@ Return ONLY valid JSON. No preamble, no commentary, no markdown code fences. Use
 }
 
 If a flag is below 70% confidence, ALWAYS mark it PURPLE regardless of category.
-If you cannot extract enough information to analyze, return {"flags": [], "dimensions": [], "flagCounts": {"red":0,"amber":0,"yellow":0,"purple":0}, "summary": "Insufficient information in document. Please verify the file contains a complete RFQ."}.`;
+If you cannot extract enough information to analyze, return {"flags": [], "dimensions": [], "flagCounts": {"red":0,"amber":0,"yellow":0,"purple":0}, "summary": "Insufficient information in document. Please verify the file contains a complete RFQ."}.
+
+ITAR / EXPORT-CONTROL DETECTION (mandatory bail-out):
+If you detect ANY markers indicating export-controlled work — including but not limited to ITAR, EAR, DDTC, USML, MIL-SPEC defense, DFARS 252.204-7012/7019, classified, secret, top secret, or controlled unclassified information (CUI) — anywhere in the document (body text, drawing title blocks, revision blocks, notes, stamps), STOP analysis and return ONLY this JSON:
+{"itar_detected": true, "summary": "Document contains export-controlled markers. QuoteScout V1 is for non-ITAR commercial work only."}`;
 
 // ===== MAIN HANDLER =====
 export default async function handler(req, res) {
@@ -168,22 +174,17 @@ export default async function handler(req, res) {
     // Delete the temp file from disk RIGHT NOW
     try { fs.unlinkSync(file.filepath); } catch (e) { /* ignore */ }
 
-    // ----- 3. Extract text -----
+    // ----- 3. Best-effort text extraction (for ITAR pre-screen + page count) -----
+    // If extraction fails or yields little text, that's OK — Claude will OCR the
+    // PDF directly via vision. We only use this for the ITAR pre-check and metadata.
     let pageCount = 0;
     try {
       const pdfData = await pdf(pdfBuffer);
       extractedText = pdfData.text || '';
       pageCount = pdfData.numpages || 0;
     } catch (err) {
-      return res.status(400).json({
-        error: 'Failed to read PDF. The file may be corrupted, password-protected, or scanned-only (no text layer). V1 supports text-based PDFs only.',
-      });
-    }
-
-    if (extractedText.trim().length < 100) {
-      return res.status(400).json({
-        error: 'PDF has very little extractable text (under 100 characters). It may be a scanned image. Try saving the document as a text-based PDF first.',
-      });
+      // Scanned/image-only PDFs may fail here. Proceed — Claude handles vision.
+      console.log('Text extraction yielded little or none; relying on Claude vision.');
     }
 
     // ----- 4. ITAR / defense work block -----
@@ -212,27 +213,36 @@ export default async function handler(req, res) {
       });
     }
 
-    // ----- 5. Truncate very long documents -----
-    // Claude has plenty of context, but we cap input to control costs.
-    // ~30k chars ≈ 7-8k tokens, fits comfortably in budget.
-    const MAX_CHARS = 30000;
-    let truncated = false;
-    if (extractedText.length > MAX_CHARS) {
-      extractedText = extractedText.slice(0, MAX_CHARS);
-      truncated = true;
-    }
+    // ----- 5. Call Claude API with PDF as a document attachment -----
+    // Sending the PDF directly (rather than extracted text) lets Claude OCR
+    // scanned drawings, read title blocks, parse tables, and see image content.
+    // Cost trade-off: ~3-5x more tokens than text-only, but works on every PDF type.
+    const pdfBase64 = pdfBuffer.toString('base64');
 
-    // ----- 6. Call Claude API -----
-    const userMessage = truncated
-      ? `Analyze the following RFQ document for risks. NOTE: The document was truncated to the first ${MAX_CHARS} characters due to length — flag this in your summary.\n\n--- RFQ DOCUMENT ---\n${extractedText}\n--- END ---\n\nReturn the structured JSON risk report per the schema in your instructions.`
-      : `Analyze the following RFQ document for risks.\n\n--- RFQ DOCUMENT ---\n${extractedText}\n--- END ---\n\nReturn the structured JSON risk report per the schema in your instructions.`;
+    const userPrompt = 'Analyze the attached RFQ document for manufacturing risks. ' +
+      'The document may be a text-based PDF, a scanned image, a CAD drawing, or a mix. ' +
+      'Read everything: title blocks, revision blocks, notes, dimensions, callouts, stamps. ' +
+      'Return the structured JSON risk report per the schema in your instructions.';
 
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [
-        { role: 'user', content: userMessage },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: pdfBase64,
+              },
+            },
+            { type: 'text', text: userPrompt },
+          ],
+        },
       ],
     });
 
@@ -262,6 +272,28 @@ export default async function handler(req, res) {
       console.error('Failed to parse AI JSON:', aiText.slice(0, 500));
       return res.status(500).json({
         error: 'AI returned malformed response. Please try again. If this persists, the document may be too unusual for our V1 prompts.',
+      });
+    }
+
+    // Handle vision-detected ITAR (Claude saw export-control markers in title blocks,
+    // stamps, or notes that our text-only ITAR pre-check missed)
+    if (parsed.itar_detected === true) {
+      try {
+        await supabase.from('analysis_logs').insert({
+          email,
+          company_name: companyName,
+          file_name: file.originalFilename || 'unknown.pdf',
+          file_size_bytes: file.size,
+          file_pages: pageCount,
+          status: 'rejected_itar',
+          error_message: 'Vision-detected ITAR/export-control markers',
+          file_deleted_at: new Date().toISOString(),
+          ai_model_used: MODEL,
+        });
+      } catch (e) { /* logging shouldn't block */ }
+
+      return res.status(400).json({
+        error: 'This document contains markers (ITAR, EAR, DDTC, MIL-SPEC defense, classified, or CUI) that indicate it may be export-controlled or defense-related work. QuoteScout V1 is for non-ITAR commercial work only. ITAR-cleared infrastructure is planned for Phase 4 (Month 18+).',
       });
     }
 
