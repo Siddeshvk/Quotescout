@@ -1,4 +1,4 @@
-# quotescout
+# Quotescout
 QuoteScout V1
 QuoteScout V1
 
