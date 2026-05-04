@@ -19,27 +19,28 @@
   <main class="form-page">
     <div class="container">
       <div class="form-card">
-        <h1>Upload your RFQ for analysis</h1>
+        <h1>Upload your RFQ package for analysis</h1>
         <p>
-          Upload a PDF of the RFQ document. The system runs a 7-layer risk analysis and returns
-          structured flags in ~30 seconds. Your file is deleted within 60 seconds — never stored.
+          Upload all files for one RFQ — drawing, spec sheet, PO, quality clauses, FAI form, anything
+          the customer sent. The system reads everything as one package, cross-references for
+          conflicts, and returns risk flags in 30–60 seconds. Files are deleted within 60 seconds — never stored.
         </p>
 
         <div class="alert alert-info">
           <strong>PDF only in V1.</strong> Have a CAD model? Export it as PDF first
           (File → Export → PDF in any CAD tool). Native CAD support coming in Phase 2.
-          Max file size: 25 MB.
+          Up to 8 files · max 50 MB total.
         </div>
 
         <form id="upload-form">
           <div class="form-group">
             <label class="upload-zone" id="drop-zone" for="file-input">
-              <p><strong>Drop your RFQ PDF here</strong></p>
+              <p><strong>Drop your RFQ files here</strong></p>
               <p>or click to browse</p>
-              <p class="file-info">PDF only · max 25 MB</p>
-              <input type="file" id="file-input" accept="application/pdf,.pdf" />
+              <p class="file-info">PDF only · up to 8 files · 50 MB total</p>
+              <input type="file" id="file-input" accept="application/pdf,.pdf" multiple />
             </label>
-            <div id="file-preview" class="file-preview"></div>
+            <div id="file-list" class="file-list"></div>
           </div>
 
           <div id="error-msg" class="alert alert-error hidden"></div>
@@ -48,7 +49,7 @@
             Analyze RFQ →
           </button>
           <p class="micro">
-            By clicking Analyze, you reaffirm: this document is not ITAR-controlled, and you have read the
+            By clicking Analyze, you reaffirm: these documents are not ITAR-controlled, and you have read the
             <a href="/terms.html" target="_blank">Terms</a>.
           </p>
         </form>
@@ -91,15 +92,27 @@
       document.getElementById('user-email').textContent = userEmail;
     }
 
-    let selectedFile = null;
+    let selectedFiles = []; // [{ file: File, label: string, id: string }]
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
-    const filePreview = document.getElementById('file-preview');
+    const fileList = document.getElementById('file-list');
     const analyzeBtn = document.getElementById('analyze-btn');
     const errorMsg = document.getElementById('error-msg');
     const loading = document.getElementById('loading');
     const loadingStage = document.getElementById('loading-stage');
     const results = document.getElementById('results');
+
+    const MAX_FILES = 8;
+    const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+    const LABEL_OPTIONS = [
+      { value: '', text: '— Label (optional) —' },
+      { value: 'drawing', text: 'Drawing' },
+      { value: 'spec_sheet', text: 'Spec Sheet' },
+      { value: 'purchase_order', text: 'Purchase Order' },
+      { value: 'quality_clauses', text: 'Quality Clauses' },
+      { value: 'fai_form', text: 'FAI / PPAP Form' },
+      { value: 'other', text: 'Other' },
+    ];
 
     function showError(msg) {
       errorMsg.textContent = msg;
@@ -110,24 +123,84 @@
       errorMsg.classList.add('hidden');
     }
 
-    function handleFile(file) {
-      hideError();
-      if (!file) return;
-      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-        showError('Only PDF files are accepted in V1. Export your CAD model as PDF first.');
+    function totalBytes() {
+      return selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+    }
+
+    function renderFileList() {
+      fileList.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        analyzeBtn.disabled = true;
         return;
       }
-      if (file.size > 25 * 1024 * 1024) {
-        showError('File too large. Max 25 MB. If your file is bigger, try compressing the PDF.');
-        return;
-      }
-      selectedFile = file;
-      filePreview.classList.add('shown');
-      filePreview.textContent = `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+      selectedFiles.forEach((entry) => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.innerHTML = `
+          <div class="file-row-info">
+            <div class="file-row-name">${entry.file.name}</div>
+            <div class="file-row-size">${(entry.file.size / 1024 / 1024).toFixed(2)} MB</div>
+          </div>
+          <select class="file-row-label" data-id="${entry.id}">
+            ${LABEL_OPTIONS.map(o => `<option value="${o.value}"${o.value === entry.label ? ' selected' : ''}>${o.text}</option>`).join('')}
+          </select>
+          <button type="button" class="file-row-remove" data-id="${entry.id}" aria-label="Remove">×</button>
+        `;
+        fileList.appendChild(row);
+      });
+      // Wire up label dropdowns
+      fileList.querySelectorAll('.file-row-label').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-id');
+          const entry = selectedFiles.find(f => f.id === id);
+          if (entry) entry.label = e.target.value;
+        });
+      });
+      // Wire up remove buttons
+      fileList.querySelectorAll('.file-row-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.target.getAttribute('data-id');
+          selectedFiles = selectedFiles.filter(f => f.id !== id);
+          renderFileList();
+        });
+      });
       analyzeBtn.disabled = false;
     }
 
-    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    function addFiles(fileArr) {
+      hideError();
+      const candidates = Array.from(fileArr);
+      for (const file of candidates) {
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+          showError(`"${file.name}" is not a PDF. Only PDFs accepted in V1 — export your CAD as PDF first.`);
+          continue;
+        }
+        if (selectedFiles.length >= MAX_FILES) {
+          showError(`Max ${MAX_FILES} files per package. Remove a file to add another.`);
+          break;
+        }
+        if (totalBytes() + file.size > MAX_TOTAL_BYTES) {
+          showError(`Adding "${file.name}" would exceed 50 MB total. Remove a file or compress.`);
+          break;
+        }
+        // Skip exact duplicates (same name + same size)
+        if (selectedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
+          continue;
+        }
+        selectedFiles.push({
+          file,
+          label: '',
+          id: `f${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        });
+      }
+      renderFileList();
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      addFiles(e.target.files);
+      // Reset so the same file can be re-selected later
+      e.target.value = '';
+    });
 
     dropZone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -137,15 +210,14 @@
     dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropZone.classList.remove('dragover');
-      if (e.dataTransfer.files[0]) {
-        fileInput.files = e.dataTransfer.files;
-        handleFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
       }
     });
 
     document.getElementById('upload-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!selectedFile) return;
+      if (selectedFiles.length === 0) return;
       hideError();
 
       analyzeBtn.disabled = true;
@@ -155,7 +227,8 @@
 
       // Stage messages
       const stages = [
-        'Extracting document text...',
+        'Reading documents...',
+        'Cross-referencing across the package...',
         'Running compliance screen...',
         'Validating sequence logic...',
         'Calculating dimensional compensations...',
@@ -169,11 +242,14 @@
           stageIdx++;
           loadingStage.textContent = stages[stageIdx];
         }
-      }, 4000);
+      }, 4500);
 
       try {
         const formData = new FormData();
-        formData.append('file', selectedFile);
+        selectedFiles.forEach((entry) => {
+          formData.append('files', entry.file);
+          formData.append('labels', entry.label || '');
+        });
         formData.append('email', userEmail);
         formData.append('company_name', userCompany || '');
 
