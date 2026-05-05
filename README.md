@@ -1,7 +1,7 @@
 QuoteScout — Stop Losing Margin to Buried RFQ Risks
 In precision manufacturing, what you don't see in an RFQ is what kills your profit. Whether it’s a sequence violation buried on page 40 or a hidden stress-relief requirement, these "surprises" usually show up when it’s too late.
 
-QuoteScout was built by manufacturing veterans to act as a second pair of eyes. It scans your technical documents in seconds and flags the risks that human reviewers might miss during a busy quoting window.
+QuoteScout was built by manufacturing a 9 to 5 engineer working full-time. It scans your technical documents in seconds and flags the risks that human reviewers might miss during a busy quoting window.
 
 🛠️ Why Use QuoteScout?
 Catch the "Invisible" Costs: We surface implied operations like nital etching, deburring, or 100% inspection requirements before you commit to a price.
