@@ -46,7 +46,7 @@
         <div class="grid grid-2">
           <div class="card">
             <span class="flag flag-red">RED</span>
-            <h3>Sequence violations &amp; compliance gaps</h3>
+            <h3>Sequence violations</h3>
             <p>Operations that physically can't happen in the order written. Missing certifications buried on page 42. Things that must be fixed before any price is written.</p>
           </div>
           <div class="card">
@@ -57,7 +57,7 @@
           <div class="card">
             <span class="flag flag-yellow">YELLOW</span>
             <h3>Hidden cost risks</h3>
-            <p>Implied operations not explicitly scoped — Stress Relief between roughing and finishing, Nital Etch after grinding, Deburr, 100% inspection. Quote them or eat them.</p>
+            <p>Implied operations the drawing assumes but doesn't explicitly scope — Stress Relief between roughing and finishing, Nital Etch after grinding, Deburr, 100% inspection. Surface them, scope them, don't absorb them.</p>
           </div>
           <div class="card">
             <span class="flag flag-purple">PURPLE</span>
@@ -81,7 +81,7 @@
           <div class="step">
             <div class="step-num">2</div>
             <h3>Wait ~30 seconds</h3>
-            <p>The AI runs the document through 7 layers of analysis: extraction, compliance screen, sequence validation, dimensional math, hidden ops, confidence scoring, and risk summary.</p>
+            <p>The AI works through the risk taxonomy: extraction, compliance, sequence, dimensional math, hidden operations, confidence scoring, and synthesis.</p>
           </div>
           <div class="step">
             <div class="step-num">3</div>
@@ -122,7 +122,7 @@
             <span class="check">✓</span>
             <div>
               <strong>No third-party sharing.</strong>
-              We do not sell, share, or train external models on your data. The text is sent to Anthropic's Claude API for analysis only — Anthropic's API zero-data-retention policy is documented at anthropic.com.
+              We do not sell, share, or train external models on your data. We use Anthropic's Claude API for analysis — Anthropic does not train models on API traffic. See <a href="https://www.anthropic.com/legal" target="_blank" rel="noopener">anthropic.com/legal</a> for their data policy.
             </div>
           </div>
           <div class="trust-item">
@@ -174,12 +174,12 @@
 
         <div class="faq-item">
           <h3>How is this different from ChatGPT?</h3>
-          <p>ChatGPT extracts text. QuoteScout normalizes manufacturing risk into a structured taxonomy: Sequence Violation, Hidden Operation, Compliance Gap, Dimensional Compensation. Each flag has machine-readable detection logic — not AI guesswork. We also score confidence on every flag, so you know when to verify.</p>
+          <p>ChatGPT extracts text. QuoteScout has a manufacturing-specific risk taxonomy and prompt layer built around precision-machining failure modes ChatGPT doesn't know about. Every flag carries a confidence score and a category — Sequence Violation, Hidden Operation, Compliance Gap, Dimensional Compensation — so you can verify systematically rather than re-reading the whole document.</p>
         </div>
 
         <div class="faq-item">
           <h3>Who built this?</h3>
-          <p>Sid K — 9+ years in precision manufacturing operations at Nissan, Magna, Maruti Suzuki, and BEML. PMP, CSSGB, GD&amp;T, APQP/PPAP certified. This is the tool I wish I'd had when I was watching $12K titanium blocks get scrapped because nobody surfaced the sequence risk.</p>
+          <p>Sid K. I work in precision manufacturing operations during the day. QuoteScout is what I build in the evenings and on weekends — the tool I wish I'd had on my own desk. Every flag in the system is calibrated against a real miss I've seen on a real shop floor.</p>
         </div>
 
         <div class="faq-item">
