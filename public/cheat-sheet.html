@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sequence Risk Cheat Sheet — QuoteScout</title>
+  <meta name="description" content="Ten precision-machining sequence risks that quietly destroy margin. Free 1-pager from QuoteScout." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>
+    :root {
+      --ink: #1a1816;
+      --ink-2: #38322b;
+      --ink-muted: #6b6359;
+      --accent: #7d3a30;
+      --rule: #d6cfc1;
+      --bg: #faf7f2;
+      --bg-card: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Charter', 'Iowan Old Style', Georgia, serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    .sheet {
+      max-width: 760px;
+      margin: 32px auto;
+      background: var(--bg-card);
+      padding: 48px 56px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .header {
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 16px;
+      margin-bottom: 28px;
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 32px;
+      line-height: 1.05;
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: var(--ink-muted);
+      margin-top: 8px;
+    }
+    .intro {
+      font-size: 15px;
+      color: var(--ink-2);
+      margin-bottom: 24px;
+    }
+    .risk {
+      border-left: 3px solid var(--accent);
+      padding: 10px 16px;
+      margin: 14px 0;
+      background: #faf6ec;
+      page-break-inside: avoid;
+    }
+    .risk-num {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .risk-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 4px 0 6px;
+    }
+    .risk-detail {
+      font-size: 14px;
+      color: var(--ink-2);
+      margin: 0;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
+      font-size: 13px;
+      color: var(--ink-muted);
+    }
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .print-hint {
+      position: sticky;
+      top: 0;
+      background: var(--ink);
+      color: var(--bg);
+      padding: 10px 16px;
+      text-align: center;
+      font-size: 13px;
+      font-family: -apple-system, system-ui, sans-serif;
+    }
+    .print-hint button {
+      background: white;
+      color: var(--ink);
+      border: none;
+      padding: 4px 12px;
+      border-radius: 3px;
+      margin-left: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    @media print {
+      body { background: white; }
+      .sheet { margin: 0; box-shadow: none; padding: 24px; max-width: none; }
+      .print-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-hint">
+    Save as PDF: press <kbd>Ctrl+P</kbd> (or <kbd>Cmd+P</kbd>) then choose "Save as PDF".
+    <button onclick="window.print()">Print / Save now</button>
+  </div>
+
+  <article class="sheet">
+    <header class="header">
+      <div class="eyebrow">QuoteScout · One-Pager</div>
+      <h1>Sequence Risk Cheat Sheet</h1>
+      <p class="subtitle">Ten precision-machining sequence risks that quietly destroy margin. Tape it to the estimating desk.</p>
+    </header>
+
+    <p class="intro">Every line below is a sequence assumption that a senior estimator catches on a careful Tuesday-night read — and that gets missed on a Friday rush. Run a 60-second check against this list before any RFQ leaves the estimating desk.</p>
+
+    <div class="risk">
+      <div class="risk-num">01 · Stress relief</div>
+      <div class="risk-title">Stress relief between roughing and finishing on long shafts</div>
+      <p class="risk-detail">Long parts (L:D > 8:1) without an explicit stress-relief callout typically need one anyway. Skipping it = warpage after final machining = scrap. Confirm the customer's expectation before pricing.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">02 · Heat treat sequence</div>
+      <div class="risk-title">Heat treat must precede finish grinding — never the reverse</div>
+      <p class="risk-detail">Grinding a part that's then sent for heat treat distorts the ground surface. If the print shows "heat treat" after "grind," it's either a sequence error or the print expects pre-heat-treat soft grind + post-heat-treat finish grind (two grind ops). Verify which.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">03 · Nital etch on aerospace bearings</div>
+      <div class="risk-title">Nital Etch is required after grinding on hardened aerospace bearings</div>
+      <p class="risk-detail">Often called out in title-block notes or page 30+. Detects grind burn. Missing it on a quote = unbillable rework. NADCAP-certified processor required for aerospace work.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">04 · Electroless nickel buildup</div>
+      <div class="risk-title">Threads must be cut undersize before Electroless Nickel plating</div>
+      <p class="risk-detail">EN adds 0.0002"–0.0005" per side. Threads cut to nominal will fail the gage after plating. Same applies to bores, OD slip-fits, and pilot diameters. Calculate pre-plate dimensions or scrap the lot.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">05 · Hard coat anodize Type III</div>
+      <div class="risk-title">Hard Coat Anodize Type III adds 0.0005"–0.001" per side, masked features need protection</div>
+      <p class="risk-detail">Critical features (bores, threads, shafts) need pre-anodize machining compensation OR explicit masking. "Hard Coat per MIL-A-8625 Type III" usually implies Class 2 (dyed black) — confirm with print or customer.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">06 · Passivation type</div>
+      <div class="risk-title">Passivation: Nitric vs Citric matters for downstream coatings</div>
+      <p class="risk-detail">Nitric (per AMS 2700 Method 1) leaves residue that affects adhesion of subsequent paint or epoxy. Citric (Method 2) is preferred for parts that get topcoated. If the print just says "passivate," ask which.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">07 · NADCAP for aerospace HT/NDT</div>
+      <div class="risk-title">Aerospace heat treat and NDT require NADCAP-certified processors</div>
+      <p class="risk-detail">If the part is for AS9100/AS9120 customers, your heat-treat vendor must be NADCAP-certified for that process (HT, FPI, MT, etc.). Non-NADCAP vendors won't work for source-inspected jobs. Verify before quoting lead time.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">08 · Deburr & break edge</div>
+      <div class="risk-title">"Break all sharp edges .005-.015" R" is a real operation, not a freebie</div>
+      <p class="risk-detail">A part with 40 features needs 40 deburr operations. On medical, aerospace, or food-contact parts, manual hand-deburr can run 10–20 minutes per part — frequently unscoped in the original quote.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">09 · First Article Inspection (FAI)</div>
+      <div class="risk-title">FAI/PPAP requirements add 1–2 weeks before production can start</div>
+      <p class="risk-detail">If the print or PO references AS9102 (FAI) or PPAP, the first-piece must be measured, documented, and approved by the customer before any further production. Estimators routinely under-quote the lead time. Add the buffer to your delivery commitment.</p>
+    </div>
+
+    <div class="risk">
+      <div class="risk-num">10 · "Unless Otherwise Specified"</div>
+      <div class="risk-title">Title-block tolerances vs the actual GD&amp;T on the print</div>
+      <p class="risk-detail">UOS in the title block (e.g., ±0.005") is the default — but specific features may have tighter explicit GD&amp;T. Don't assume the title block applies to every dimension. Read every callout. The expensive ones are usually buried.</p>
+    </div>
+
+    <footer class="footer">
+      <p><strong>Want this checked automatically against your next RFQ?</strong> QuoteScout reads the document and flags every risk on this list (and ~40 others) in 30 seconds — free for the first 500 shops, NDA on the next page. <a href="/">quotescout — start free analysis →</a></p>
+      <p style="margin-top: 12px; font-size: 12px;">© QuoteScout 2026 · Built by Sid K · This sheet is informational only — every flag requires verification by qualified engineering personnel before pricing.</p>
+    </footer>
+  </article>
+</body>
+</html>

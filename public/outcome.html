@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Track Outcome — QuoteScout</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-row">
+      <a href="/" class="brand">QuoteScout</a>
+      <nav class="header-nav">
+        <a href="/">Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="container container-narrow">
+        <div class="form-card">
+          <h1>Track this RFQ outcome</h1>
+          <p>
+            What happened with the RFQ you analyzed? Even a single radio button helps —
+            this is how QuoteScout learns which flags actually mattered.
+          </p>
+
+          <form id="outcome-form">
+            <input type="hidden" id="analysis-id" />
+
+            <div class="form-group">
+              <label class="form-label">Outcome</label>
+              <div class="radio-group">
+                <label class="radio-row">
+                  <input type="radio" name="outcome" value="quoted_won_clean" required>
+                  <span><strong>Quoted, won, no issues.</strong> Job completed cleanly.</span>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="outcome" value="quoted_won_with_issue">
+                  <span><strong>Quoted, won, but had an issue.</strong> Change order, rework, or scope creep.</span>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="outcome" value="quoted_lost">
+                  <span><strong>Quoted, did not win.</strong> Lost on price, lead time, or other.</span>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="outcome" value="no_bid">
+                  <span><strong>Did not quote.</strong> No-bid after review.</span>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="outcome" value="in_progress">
+                  <span><strong>Still in progress.</strong> Quoting or producing now.</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="missed-flags" class="form-label">Did we miss anything? (optional)</label>
+              <textarea id="missed-flags" rows="3" placeholder="What risk did the system miss that should have been flagged?"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="notes" class="form-label">Anything else? (optional)</label>
+              <textarea id="notes" rows="3" placeholder="False positives, surprises, ideas — short notes welcome."></textarea>
+            </div>
+
+            <div id="error-msg" class="alert alert-error hidden"></div>
+            <div id="success-msg" class="alert alert-success hidden">
+              <strong>Thank you.</strong> This data is exactly what makes QuoteScout sharper for the next shop.
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn btn-primary btn-large">Submit outcome</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="micro">QuoteScout — risk-surfacing for precision manufacturing RFQs · <a href="/">Home</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const analysisId = params.get('id');
+    document.getElementById('analysis-id').value = analysisId || '';
+
+    const form = document.getElementById('outcome-form');
+    const errorMsg = document.getElementById('error-msg');
+    const successMsg = document.getElementById('success-msg');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.classList.add('hidden');
+
+      if (!analysisId) {
+        errorMsg.textContent = 'No analysis ID found. Make sure you clicked through from the email.';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      const outcome = document.querySelector('input[name="outcome"]:checked')?.value;
+      if (!outcome) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch('/api/outcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analysisId,
+            outcome,
+            notes: document.getElementById('notes').value.trim() || undefined,
+            missedFlags: document.getElementById('missed-flags').value.trim()
+              ? [document.getElementById('missed-flags').value.trim()]
+              : undefined,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Submission failed.');
+
+        form.classList.add('hidden');
+        successMsg.classList.remove('hidden');
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit outcome';
+      }
+    });
+  </script>
+</body>
+</html>
