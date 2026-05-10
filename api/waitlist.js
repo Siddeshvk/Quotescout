@@ -1,13 +1,16 @@
 // =====================================================================
-// QuoteScout — /api/waitlist
-// =====================================================================
-// Captures email addresses from visitors who aren't ready to upload an
-// RFQ but want the Sequence Risk Cheat Sheet and updates. This is the
-// soft-conversion path — most visitors won't upload on day one.
+// QuoteScout — /api/waitlist (with diagnostic logging)
 // =====================================================================
 
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+
+console.log('=== waitlist.js module load ===');
+console.log('RESEND_API_KEY present:', !!process.env.RESEND_API_KEY);
+console.log('RESEND_API_KEY length:', (process.env.RESEND_API_KEY || '').length);
+console.log('RESEND_API_KEY starts with re_:', (process.env.RESEND_API_KEY || '').startsWith('re_'));
+console.log('RESEND_FROM_EMAIL value:', JSON.stringify(process.env.RESEND_FROM_EMAIL));
+console.log('SUPABASE_URL present:', !!process.env.SUPABASE_URL);
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -18,11 +21,9 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'reports@quotescout.com';
+console.log('Resend client created:', !!resend);
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'reports@quotescout.com';
   }
 
   try {
