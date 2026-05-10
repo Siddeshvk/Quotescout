@@ -40,18 +40,24 @@ export default async function handler(req, res) {
     const ip = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim();
 
     // Idempotent: if email already exists, treat as success
-    const { error } = await supabase.from('waitlist').insert({
-      email,
-      company_name: company || null,
-      role: role || null,
-      ip_address: ip || null,
-      source: 'homepage',
-    });
+  const { error } = await supabase.from('waitlist').insert({
+  email,
+  company_name: company || null,
+  role: role || null,
+  ip_address: ip || null,
+  source: 'homepage',
+});
 
-    if (error && !error.message?.toLowerCase().includes('duplicate')) {
-      console.error('Supabase waitlist insert failed:', error);
-      // Soft-fail: still return 200 and let them get the cheat sheet
-    }
+if (error) {
+  const isDuplicate = error.code === '23505' ||
+                      error.message?.toLowerCase().includes('duplicate');
+  if (isDuplicate) {
+    console.log(`Waitlist: ${email} already exists — re-sending cheat sheet anyway.`);
+  } else {
+    console.error('Supabase waitlist insert failed:', error);
+  }
+  // Either way, soft-fail and continue to email send
+}
 
     // Fire-and-forget: send the cheat sheet link via email
     if (resend) {
