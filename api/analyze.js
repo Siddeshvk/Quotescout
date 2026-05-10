@@ -27,6 +27,7 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 import pdf from 'pdf-parse';
+import { Resend } from 'resend';
 
 // Vercel needs this — disable default body parsing for file uploads
 export const config = {
@@ -446,6 +447,17 @@ export default async function handler(req, res) {
       console.error('Supabase log failed:', e.message);
     }
 
+    // ----- 9b. Email the report (optional — silently skipped if RESEND_API_KEY not set) -----
+    sendReportEmail({
+      to: email,
+      companyName,
+      fileNames: rawFiles.map(f => f.originalFilename || 'unknown.pdf'),
+      analysisId: logId,
+      counts,
+      flags: parsed.flags || [],
+      summary: parsed.summary || '',
+    }).catch(e => console.error('Email send failed (non-blocking):', e?.message));
+
     // ----- 10. Return result -----
     return res.status(200).json({
       ...parsed,
@@ -454,6 +466,7 @@ export default async function handler(req, res) {
       modelUsed: MODEL,
       processingMs,
       fileCount: rawFiles.length,
+      emailWillBeSent: !!process.env.RESEND_API_KEY,
     });
 
   } catch (err) {
@@ -464,4 +477,95 @@ export default async function handler(req, res) {
       detail: process.env.NODE_ENV === 'development' ? err.message : undefined,
     });
   }
+}
+
+// =====================================================================
+// Email helper — sends the risk report to the user via Resend.
+// Silently skipped if RESEND_API_KEY is not configured. Never blocks
+// the user-facing response — runs fire-and-forget.
+// =====================================================================
+async function sendReportEmail({ to, companyName, fileNames, analysisId, counts, flags, summary }) {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'reports@quotescout.com';
+
+  const fileList = fileNames.join(', ');
+  const totalFlags = (counts.red || 0) + (counts.amber || 0) + (counts.yellow || 0) + (counts.purple || 0);
+
+  // Render flags as simple HTML blocks
+  const flagHtml = (flags || []).slice(0, 30).map(f => {
+    const sevColor = {
+      RED: '#b91c1c',
+      AMBER: '#b45309',
+      YELLOW: '#a16207',
+      PURPLE: '#7c3aed',
+    }[(f.severity || 'PURPLE').toUpperCase()] || '#555';
+    const conf = (typeof f.confidence === 'number') ? `${f.confidence}%` : '—';
+    return `
+<div style="border-left: 3px solid ${sevColor}; padding: 10px 14px; margin: 12px 0; background: #fafafa;">
+  <div style="font-size: 11px; font-weight: 600; color: ${sevColor}; letter-spacing: 0.05em;">${(f.severity || '').toUpperCase()} · ${(f.category || '').toUpperCase()} · CONFIDENCE ${conf}</div>
+  <div style="font-weight: 600; margin-top: 4px;">${escapeHtml(f.title || '')}</div>
+  <div style="font-size: 14px; margin-top: 4px; color: #333;">${escapeHtml(f.description || '')}</div>
+  ${f.location ? `<div style="font-size: 12px; color: #777; margin-top: 6px;">Location: ${escapeHtml(f.location)}</div>` : ''}
+  ${f.recommendedAction ? `<div style="font-size: 13px; color: #444; margin-top: 4px;"><strong>Recommended:</strong> ${escapeHtml(f.recommendedAction)}</div>` : ''}
+</div>`;
+  }).join('');
+
+  const outcomeUrl = analysisId
+    ? `https://quotescout.vercel.app/outcome.html?id=${encodeURIComponent(analysisId)}`
+    : null;
+
+  const html = `
+<div style="font-family: -apple-system, system-ui, 'Segoe UI', sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a1a; line-height: 1.55; padding: 16px;">
+  <div style="border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 20px;">
+    <h2 style="font-weight: 600; font-size: 20px; margin: 0;">QuoteScout — Risk Report</h2>
+    <div style="font-size: 13px; color: #666; margin-top: 4px;">${escapeHtml(fileList)}${companyName ? ` · ${escapeHtml(companyName)}` : ''}</div>
+  </div>
+
+  <div style="background: #f5f1e8; padding: 12px 16px; border-left: 3px solid #7d3a30; margin-bottom: 20px;">
+    <div style="font-size: 11px; font-weight: 600; color: #7d3a30; letter-spacing: 0.05em;">SUMMARY</div>
+    <div style="margin-top: 6px;">${escapeHtml(summary || 'See flags below.')}</div>
+  </div>
+
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0;">
+    <span style="background: #fef2f2; color: #b91c1c; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">RED ${counts.red || 0}</span>
+    <span style="background: #fffbeb; color: #b45309; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">AMBER ${counts.amber || 0}</span>
+    <span style="background: #fefce8; color: #a16207; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">YELLOW ${counts.yellow || 0}</span>
+    <span style="background: #f5f3ff; color: #7c3aed; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">PURPLE ${counts.purple || 0}</span>
+  </div>
+
+  <h3 style="font-size: 16px; margin-top: 24px;">Risk Flags (${totalFlags})</h3>
+  ${flagHtml || '<p style="color: #777;">No flags surfaced.</p>'}
+
+  <div style="background: #fafafa; border: 1px solid #e5e5e5; padding: 14px; margin-top: 24px; font-size: 13px; color: #555;">
+    <strong>Mandatory disclaimer:</strong> All flags require verification by qualified engineering personnel before pricing. QuoteScout does not price jobs, guarantee manufacturability, or replace engineering judgment.
+  </div>
+
+  ${outcomeUrl ? `
+  <div style="margin-top: 24px; padding: 16px; border: 1px dashed #999; text-align: center;">
+    <p style="margin: 0 0 12px;"><strong>Help us improve.</strong> When this RFQ closes, tell us what happened.</p>
+    <a href="${outcomeUrl}" style="background: #1a1a1a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: 500;">Track this outcome →</a>
+    <p style="margin: 12px 0 0; font-size: 12px; color: #777;">This is the data loop. Every outcome reported makes the system sharper for the next shop.</p>
+  </div>` : ''}
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
+  <p style="font-size: 12px; color: #888;">QuoteScout · risk-surfacing engine for precision manufacturing RFQs · Built by Sid K · Reply to this email with feedback or to talk shop.</p>
+</div>`;
+
+  await resend.emails.send({
+    from: `QuoteScout <${fromEmail}>`,
+    to,
+    subject: `QuoteScout risk report — ${fileList.length > 60 ? fileNames[0] + ' + others' : fileList} (${totalFlags} flags)`,
+    html,
+  });
+}
+
+function escapeHtml(s) {
+  if (typeof s !== 'string') return '';
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
