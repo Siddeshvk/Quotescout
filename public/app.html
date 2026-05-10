@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze RFQ — QuoteScout</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-row">
+      <a href="/" class="brand">QuoteScout</a>
+      <nav class="header-nav">
+        <span id="user-email" style="color: #5a5a5a; font-size: 14px;"></span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="form-page">
+    <div class="container">
+      <div class="form-card">
+        <h1>Upload your RFQ package for analysis</h1>
+        <p>
+          Upload all files for one RFQ — drawing, spec sheet, PO, quality clauses, FAI form, anything
+          the customer sent. The system reads everything as one package, cross-references for
+          conflicts, and returns risk flags in 30–60 seconds. Files are deleted within 60 seconds — never stored.
+        </p>
+
+        <div class="alert alert-info">
+          <strong>PDF only in V1.</strong> Have a CAD model? Export it as PDF first
+          (File → Export → PDF in any CAD tool). Native CAD support coming in Phase 2.
+          Up to 8 files · max 50 MB total.
+        </div>
+
+        <form id="upload-form">
+          <div class="form-group">
+            <label class="upload-zone" id="drop-zone" for="file-input">
+              <p><strong>Drop your RFQ files here</strong></p>
+              <p>or click to browse</p>
+              <p class="file-info">PDF only · up to 8 files · 50 MB total</p>
+              <input type="file" id="file-input" accept="application/pdf,.pdf" multiple />
+            </label>
+            <div id="file-list" class="file-list"></div>
+          </div>
+
+          <div id="error-msg" class="alert alert-error hidden"></div>
+
+          <button type="submit" id="analyze-btn" class="btn btn-primary btn-large" disabled>
+            Analyze RFQ →
+          </button>
+          <p class="micro">
+            By clicking Analyze, you reaffirm: these documents are not ITAR-controlled, and you have read the
+            <a href="/terms.html" target="_blank">Terms</a>.
+          </p>
+        </form>
+
+        <!-- Loading state -->
+        <div id="loading" class="loading">
+          <div class="spinner"></div>
+          <p><strong>Analyzing...</strong></p>
+          <p class="loading-stage" id="loading-stage">Extracting document text...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results hidden"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-disclaimer">
+        QuoteScout does not price jobs, guarantee manufacturability, or replace engineering judgment.
+        It identifies areas requiring attention so teams can make informed decisions faster.
+        All flags require verification by qualified engineering personnel before pricing.
+      </p>
+      <nav class="footer-nav">
+        <a href="/terms.html">Terms of Service</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/nda.html">Mutual NDA</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Gate: must have NDA accepted (email in localStorage)
+    const userEmail = localStorage.getItem('qs_email');
+    const userCompany = localStorage.getItem('qs_company');
+    if (!userEmail) {
+      window.location.href = '/nda.html';
+    } else {
+      document.getElementById('user-email').textContent = userEmail;
+    }
+
+    let selectedFiles = []; // [{ file: File, label: string, id: string }]
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.getElementById('file-list');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const errorMsg = document.getElementById('error-msg');
+    const loading = document.getElementById('loading');
+    const loadingStage = document.getElementById('loading-stage');
+    const results = document.getElementById('results');
+
+    const MAX_FILES = 8;
+    const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+    const LABEL_OPTIONS = [
+      { value: '', text: '— Label (optional) —' },
+      { value: 'drawing', text: 'Drawing' },
+      { value: 'spec_sheet', text: 'Spec Sheet' },
+      { value: 'purchase_order', text: 'Purchase Order' },
+      { value: 'quality_clauses', text: 'Quality Clauses' },
+      { value: 'fai_form', text: 'FAI / PPAP Form' },
+      { value: 'other', text: 'Other' },
+    ];
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.remove('hidden');
+    }
+
+    function hideError() {
+      errorMsg.classList.add('hidden');
+    }
+
+    function totalBytes() {
+      return selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+    }
+
+    function renderFileList() {
+      fileList.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        analyzeBtn.disabled = true;
+        return;
+      }
+      selectedFiles.forEach((entry) => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.innerHTML = `
+          <div class="file-row-info">
+            <div class="file-row-name">${entry.file.name}</div>
+            <div class="file-row-size">${(entry.file.size / 1024 / 1024).toFixed(2)} MB</div>
+          </div>
+          <select class="file-row-label" data-id="${entry.id}">
+            ${LABEL_OPTIONS.map(o => `<option value="${o.value}"${o.value === entry.label ? ' selected' : ''}>${o.text}</option>`).join('')}
+          </select>
+          <button type="button" class="file-row-remove" data-id="${entry.id}" aria-label="Remove">×</button>
+        `;
+        fileList.appendChild(row);
+      });
+      // Wire up label dropdowns
+      fileList.querySelectorAll('.file-row-label').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-id');
+          const entry = selectedFiles.find(f => f.id === id);
+          if (entry) entry.label = e.target.value;
+        });
+      });
+      // Wire up remove buttons
+      fileList.querySelectorAll('.file-row-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.target.getAttribute('data-id');
+          selectedFiles = selectedFiles.filter(f => f.id !== id);
+          renderFileList();
+        });
+      });
+      analyzeBtn.disabled = false;
+    }
+
+    function addFiles(fileArr) {
+      hideError();
+      const candidates = Array.from(fileArr);
+      for (const file of candidates) {
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+          showError(`"${file.name}" is not a PDF. Only PDFs accepted in V1 — export your CAD as PDF first.`);
+          continue;
+        }
+        if (selectedFiles.length >= MAX_FILES) {
+          showError(`Max ${MAX_FILES} files per package. Remove a file to add another.`);
+          break;
+        }
+        if (totalBytes() + file.size > MAX_TOTAL_BYTES) {
+          showError(`Adding "${file.name}" would exceed 50 MB total. Remove a file or compress.`);
+          break;
+        }
+        // Skip exact duplicates (same name + same size)
+        if (selectedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
+          continue;
+        }
+        selectedFiles.push({
+          file,
+          label: '',
+          id: `f${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        });
+      }
+      renderFileList();
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      addFiles(e.target.files);
+      // Reset so the same file can be re-selected later
+      e.target.value = '';
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+      }
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (selectedFiles.length === 0) return;
+      hideError();
+
+      analyzeBtn.disabled = true;
+      analyzeBtn.classList.add('hidden');
+      loading.classList.add('shown');
+      results.classList.add('hidden');
+
+      // Stage messages
+      const stages = [
+        'Reading documents...',
+        'Cross-referencing across the package...',
+        'Running compliance screen...',
+        'Validating sequence logic...',
+        'Calculating dimensional compensations...',
+        'Detecting hidden operations...',
+        'Scoring confidence...',
+        'Synthesizing risk summary...'
+      ];
+      let stageIdx = 0;
+      const stageInterval = setInterval(() => {
+        if (stageIdx < stages.length - 1) {
+          stageIdx++;
+          loadingStage.textContent = stages[stageIdx];
+        }
+      }, 4500);
+
+      try {
+        const formData = new FormData();
+        selectedFiles.forEach((entry) => {
+          formData.append('files', entry.file);
+          formData.append('labels', entry.label || '');
+        });
+        formData.append('email', userEmail);
+        formData.append('company_name', userCompany || '');
+
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        clearInterval(stageInterval);
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Analysis failed. Please try again.');
+        }
+
+        const data = await res.json();
+        displayResults(data);
+      } catch (err) {
+        clearInterval(stageInterval);
+        loading.classList.remove('shown');
+        analyzeBtn.classList.remove('hidden');
+        analyzeBtn.disabled = false;
+        showError(err.message);
+      }
+    });
+
+    function displayResults(data) {
+      loading.classList.remove('shown');
+      results.classList.remove('hidden');
+
+      const flags = data.flags || [];
+      const counts = data.flagCounts || { red: 0, amber: 0, yellow: 0, purple: 0 };
+      const total = (counts.red || 0) + (counts.amber || 0) + (counts.yellow || 0) + (counts.purple || 0);
+
+      let html = `
+        <div class="result-summary">
+          <h2 style="margin-bottom: 8px;">Risk Summary</h2>
+          <p style="margin: 0;"><strong>${total}</strong> total flags identified.</p>
+          <div class="flag-counts">
+            <div class="flag-count red"><strong>${counts.red || 0}</strong>RED</div>
+            <div class="flag-count amber"><strong>${counts.amber || 0}</strong>AMBER</div>
+            <div class="flag-count yellow"><strong>${counts.yellow || 0}</strong>YELLOW</div>
+            <div class="flag-count purple"><strong>${counts.purple || 0}</strong>PURPLE</div>
+          </div>
+        </div>
+
+        <div class="deletion-banner">
+          ✓ Your file was processed and deleted at ${new Date(data.fileDeletedAt || Date.now()).toLocaleString()} — no copy retained.
+        </div>
+      `;
+
+      // Group by severity
+      const bySeverity = { RED: [], AMBER: [], YELLOW: [], PURPLE: [] };
+      flags.forEach(f => {
+        const sev = (f.severity || 'PURPLE').toUpperCase();
+        if (bySeverity[sev]) bySeverity[sev].push(f);
+        else bySeverity.PURPLE.push(f);
+      });
+
+      ['RED', 'AMBER', 'YELLOW', 'PURPLE'].forEach(sev => {
+        if (bySeverity[sev].length === 0) return;
+        html += `<h2 style="margin: 24px 0 12px;">${sev} flags (${bySeverity[sev].length})</h2>`;
+        bySeverity[sev].forEach(f => {
+          html += `
+            <div class="flag-card ${sev.toLowerCase()}">
+              <div class="flag-header">
+                <span class="flag flag-${sev.toLowerCase()}">${sev}</span>
+                <span class="flag-meta">
+                  ${f.category || 'risk'} · confidence ${f.confidence || 'n/a'}%
+                  ${f.location ? ' · ' + escapeHtml(f.location) : ''}
+                </span>
+              </div>
+              <h4>${escapeHtml(f.title || 'Risk identified')}</h4>
+              <p>${escapeHtml(f.description || '')}</p>
+              ${f.estimatedCostRange ? `<p><strong>Estimated cost impact:</strong> ${escapeHtml(f.estimatedCostRange)}</p>` : ''}
+              ${f.recommendedAction ? `<div class="recommended-action">Recommended action: ${escapeHtml(f.recommendedAction)}</div>` : ''}
+            </div>
+          `;
+        });
+      });
+
+      // Dimensional calculations (if any)
+      if (data.dimensions && data.dimensions.length > 0) {
+        html += `<h2 style="margin: 24px 0 12px;">Dimensional Compensation Calculations</h2>`;
+        data.dimensions.forEach(d => {
+          html += `
+            <div class="flag-card yellow">
+              <h4>${escapeHtml(d.feature || 'Feature')}</h4>
+              <p><strong>Coating:</strong> ${escapeHtml(d.coating || 'n/a')}</p>
+              <p><strong>Pre-coat dimension:</strong> ${escapeHtml(d.preCoatValue || 'n/a')}</p>
+              <p>${escapeHtml(d.calculation || '')}</p>
+              <div class="recommended-action">Verify with plating vendor before machining.</div>
+            </div>
+          `;
+        });
+      }
+
+      html += `
+        <div class="disclaimer-banner">
+          <strong>Required disclaimer:</strong> All flags require verification by qualified engineering personnel before pricing.
+          QuoteScout does not approve, price, or guarantee manufacturability of any job.
+        </div>
+      `;
+
+      // Email-sent confirmation
+      if (data.emailWillBeSent) {
+        html += `
+        <div class="alert alert-info" style="margin-top: 16px;">
+          <strong>📧 A copy of this report is being emailed to ${escapeHtml(userEmail)}.</strong> Forward it to your team or save it to the project folder.
+        </div>
+        `;
+      }
+
+      // Outcome-prompt block (the Moat #2 data loop)
+      if (data.analysisId) {
+        html += `
+        <div id="outcome-prompt-after-results" class="outcome-prompt">
+          <h3>How did this RFQ turn out?</h3>
+          <p>One radio button is fine. This data loop is what makes QuoteScout sharper for the next shop — and your shop, the next time around.</p>
+          <a href="/outcome.html?id=${encodeURIComponent(data.analysisId)}" class="btn btn-primary">Track outcome →</a>
+        </div>
+        `;
+      }
+
+      html += `
+        <div style="margin-top: 32px; text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.print()" class="btn btn-secondary">🖨 Print / Save as PDF</button>
+          <a href="/app.html" class="btn btn-secondary">Analyze Another RFQ</a>
+        </div>
+      `;
+
+      results.innerHTML = html;
+      window.scrollTo({ top: results.offsetTop - 80, behavior: 'smooth' });
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
