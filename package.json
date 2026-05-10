@@ -9,8 +9,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
-    "@supabase/supabase-js": "^2.45.0",
+    "@supabase/supabase-js": "^2.105.0",
     "formidable": "^3.5.1",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "resend": "^4.0.0"
   }
 }
