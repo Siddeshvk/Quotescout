@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Track outcome · QuoteScout</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-flex">
+      <a href="/" class="logo">QuoteScout</a>
+      <nav class="header-nav">
+        <a href="/app.html">Upload RFQ</a>
+        <a href="/profile.html">Shop profile</a>
+        <a href="/cheat-sheet.html">Cheat sheet</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container narrow" style="padding-top: 32px; padding-bottom: 64px;">
+
+    <div id="missing-id" class="alert alert-error hidden" style="margin-bottom: 20px;">
+      Missing analysis ID. Outcome forms are linked from inside an analysis result — please use the "Track outcome →" button there.
+    </div>
+
+    <div id="form-container">
+      <h1 style="margin-bottom: 6px;">How did this RFQ turn out?</h1>
+      <p class="lede" style="margin-bottom: 20px;">
+        This is the most valuable data we collect. Every outcome you report makes the next shop's analysis sharper — and yours, the next time around.
+      </p>
+      <p class="micro" style="margin-bottom: 28px; color: #666;">
+        Analysis ID: <code id="analysis-id-display">—</code> · One field is enough. Everything else is optional.
+      </p>
+
+      <div id="status-banner" class="alert hidden" style="margin-bottom: 20px;"></div>
+
+      <form id="outcome-form" style="display: flex; flex-direction: column; gap: 22px;">
+
+        <!-- Outcome status (required) -->
+        <fieldset style="border: 1px solid #e5dfd0; border-radius: 6px; padding: 16px 18px;">
+          <legend style="font-size: 14px; font-weight: 600; padding: 0 8px; color: #1a1816;">What happened with this RFQ?</legend>
+          <div class="outcome-radio-grid">
+            <label class="outcome-radio">
+              <input type="radio" name="outcome" value="won" />
+              <span class="outcome-radio-body">
+                <strong>✓ Won the job</strong>
+                <span class="outcome-radio-sub">Quote was accepted and PO is in hand.</span>
+              </span>
+            </label>
+            <label class="outcome-radio">
+              <input type="radio" name="outcome" value="lost" />
+              <span class="outcome-radio-body">
+                <strong>✕ Lost the bid</strong>
+                <span class="outcome-radio-sub">Quote was rejected or awarded elsewhere.</span>
+              </span>
+            </label>
+            <label class="outcome-radio">
+              <input type="radio" name="outcome" value="no_bid" />
+              <span class="outcome-radio-body">
+                <strong>↩ No-bid / declined to quote</strong>
+                <span class="outcome-radio-sub">Capability gap, scope unclear, or strategic pass.</span>
+              </span>
+            </label>
+            <label class="outcome-radio">
+              <input type="radio" name="outcome" value="pending" />
+              <span class="outcome-radio-body">
+                <strong>⏳ Quote sent, still pending</strong>
+                <span class="outcome-radio-sub">Awaiting customer response. Come back later to update.</span>
+              </span>
+            </label>
+            <label class="outcome-radio">
+              <input type="radio" name="outcome" value="other" />
+              <span class="outcome-radio-body">
+                <strong>Other</strong>
+                <span class="outcome-radio-sub">RFQ withdrawn, scope changed, etc.</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- Missed requirement — the moat field -->
+        <div class="form-group">
+          <label for="missed-requirement" style="font-weight: 600;">
+            What did the AI miss? <span class="micro" style="color:#888; font-weight: normal;">(optional but valuable)</span>
+          </label>
+          <p class="micro" style="color: #666; margin: 4px 0 8px;">
+            Things you caught manually that QuoteScout didn't flag. Tolerance edge cases, customer-specific clauses, supplier history, material gotchas — the senior-estimator instincts that fire when the AI is silent. Every one of these gets folded back into the prompt.
+          </p>
+          <textarea id="missed-requirement" name="missed_requirement" rows="4" maxlength="2000"
+            placeholder="Examples:
+• Didn't flag that this customer always issues a Rev change on first-article rejection.
+• Missed the implied stress-relief between roughing and finishing on this alloy.
+• Didn't catch the 'no rework' clause buried in section 7 of the quality flowdown."></textarea>
+        </div>
+
+        <!-- Quoted higher — the ROI field -->
+        <fieldset style="border: 1px solid #e5dfd0; border-radius: 6px; padding: 16px 18px;">
+          <legend style="font-size: 14px; font-weight: 600; padding: 0 8px; color: #1a1816;">
+            Would you have quoted higher?
+            <span class="micro" style="color:#888; font-weight: normal;">(if QuoteScout had caught everything you caught)</span>
+          </legend>
+          <p class="micro" style="color: #666; margin: 0 0 10px;">
+            This is how we measure ROI. If catching what you caught would have raised your number, we want to know.
+          </p>
+          <div class="outcome-radio-grid">
+            <label class="outcome-radio">
+              <input type="radio" name="would_have_quoted_higher" value="true" />
+              <span class="outcome-radio-body">
+                <strong>Yes — I would have charged more</strong>
+                <span class="outcome-radio-sub">Risks I caught manually justified a higher number.</span>
+              </span>
+            </label>
+            <label class="outcome-radio">
+              <input type="radio" name="would_have_quoted_higher" value="false" />
+              <span class="outcome-radio-body">
+                <strong>No — my quote was right as priced</strong>
+                <span class="outcome-radio-sub">No hidden cost drivers I caught that would have moved the price.</span>
+              </span>
+            </label>
+            <label class="outcome-radio">
+              <input type="radio" name="would_have_quoted_higher" value="" />
+              <span class="outcome-radio-body">
+                <strong>Not applicable</strong>
+                <span class="outcome-radio-sub">No-bid, withdrawn, or quote not yet built.</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- Email (optional) -->
+        <div class="form-group">
+          <label for="email">
+            Your email <span class="micro" style="color:#888; font-weight: normal;">(optional — only if you want a reply)</span>
+          </label>
+          <input type="email" id="email" name="email" placeholder="you@shopname.com" />
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px;">
+          <button type="submit" class="btn btn-primary">Submit feedback</button>
+          <a href="/app.html" class="btn btn-secondary">Analyze another RFQ</a>
+        </div>
+      </form>
+    </div>
+
+    <div id="success-block" class="hidden" style="text-align: center; padding: 48px 16px;">
+      <div style="font-size: 48px; margin-bottom: 12px;">✓</div>
+      <h2 style="margin-bottom: 8px;">Thank you.</h2>
+      <p class="lede" style="margin-bottom: 24px;">Your feedback was recorded. Every outcome shapes how QuoteScout flags the next RFQ.</p>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <a href="/app.html" class="btn btn-primary">Analyze another RFQ</a>
+        <a href="/" class="btn btn-secondary">Back to home</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>QuoteScout · Built by Sid K · <a href="/">Home</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // Read analysis_id from ?id=XXX
+    const urlParams = new URLSearchParams(window.location.search);
+    const analysisId = urlParams.get('id');
+    const idDisplay = document.getElementById('analysis-id-display');
+    const formContainer = document.getElementById('form-container');
+    const missingId = document.getElementById('missing-id');
+    const successBlock = document.getElementById('success-block');
+    const statusBanner = document.getElementById('status-banner');
+
+    if (!analysisId) {
+      formContainer.classList.add('hidden');
+      missingId.classList.remove('hidden');
+    } else {
+      idDisplay.textContent = analysisId;
+    }
+
+    function showStatus(msg, isError) {
+      statusBanner.textContent = msg;
+      statusBanner.className = 'alert ' + (isError ? 'alert-error' : 'alert-info');
+      statusBanner.classList.remove('hidden');
+      statusBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    document.getElementById('outcome-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusBanner.classList.add('hidden');
+
+      const outcome = document.querySelector('input[name="outcome"]:checked')?.value || '';
+      const missedRequirement = document.getElementById('missed-requirement').value.trim();
+      const wouldHaveQuotedHigherRaw = document.querySelector('input[name="would_have_quoted_higher"]:checked')?.value;
+      // Convert to true/false/null
+      let wouldHaveQuotedHigher = null;
+      if (wouldHaveQuotedHigherRaw === 'true') wouldHaveQuotedHigher = true;
+      else if (wouldHaveQuotedHigherRaw === 'false') wouldHaveQuotedHigher = false;
+      const email = document.getElementById('email').value.trim().toLowerCase();
+
+      if (!outcome) {
+        showStatus('Please select an outcome status above.', true);
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch('/api/outcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analysis_id: analysisId,
+            outcome,
+            missed_requirement: missedRequirement || null,
+            would_have_quoted_higher: wouldHaveQuotedHigher,
+            email: email || null,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Submission failed (HTTP ${res.status})`);
+        }
+        formContainer.classList.add('hidden');
+        successBlock.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showStatus('⚠️ ' + (err.message || 'Submission failed. Please try again.'), true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit feedback';
+      }
+    });
+  </script>
+</body>
+</html>
