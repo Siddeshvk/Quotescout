@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuoteScout — Make Hidden RFQ Risk Visible Before You Quote</title>
+  <meta name="description" content="AI risk-surfacing engine for precision manufacturing RFQs. Scan documents and surface tolerance conflicts, missing certs, sequence violations, and implied operations before you quote. Typical: under 5 minutes." />
+
+  <!-- Open Graph / social sharing -->
+  <meta property="og:title" content="QuoteScout — Make Hidden RFQ Risk Visible Before You Quote" />
+  <meta property="og:description" content="AI risk-surfacing engine for precision manufacturing RFQs. Catch hidden RFQ risk before you quote. Tolerance conflicts, missing certs, sequence violations. Free for the first 500 shops." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://quotescout.vercel.app/" />
+  <meta property="og:image" content="https://quotescout.vercel.app/og-image.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="QuoteScout — Make Hidden RFQ Risk Visible Before You Quote" />
+  <meta name="twitter:description" content="AI risk-surfacing engine for precision manufacturing RFQs. Free for the first 500 shops." />
+  <meta name="twitter:image" content="https://quotescout.vercel.app/og-image.svg" />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-row">
+      <a href="/" class="brand">QuoteScout</a>
+      <nav class="header-nav">
+        <a href="#how">How it works</a>
+        <a href="#trust">Trust &amp; data</a>
+        <a href="/profile.html">Shop profile</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="container">
+        <p class="badge">Free Beta — first 500 shops, no charge</p>
+        <h1>Catch hidden RFQ risk<br />before you quote.</h1>
+        <p class="lede">
+          QuoteScout scans drawings, specs, and full RFQ packages for tolerance conflicts, missing certs, sequence violations, and implied operations — the kind of issues that turn a profitable quote into a job that bleeds margin.
+        </p>
+        <a href="/nda.html" class="btn btn-primary btn-large">Upload RFQ Package →</a>
+        <ul class="cta-reassure">
+          <li>NDA before upload</li>
+          <li>Files deleted in 60 seconds</li>
+          <li>No model training</li>
+          <li>Non-ITAR only</li>
+        </ul>
+        <p class="micro hero-secondary">
+          <a href="/sample.html">See a sample analysis</a> · <a href="#waitlist-anchor">Get the estimator cheat sheet</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- SAMPLE FLAG CARD — the "aha" moment. Shows what real output looks like. -->
+    <section class="section sample-flag-section">
+      <div class="container">
+        <p class="sample-flag-eyebrow">Sample output — a real catch</p>
+        <div class="sample-flag-card">
+          <div class="sample-flag-header">
+            <span class="sample-flag-sev sample-flag-sev-red">🔴 RED</span>
+            <span class="sample-flag-meta">SEQUENCE · COMPLIANCE · CONFIDENCE 94%</span>
+            <span class="sample-flag-impact">Cost driver · scrap risk</span>
+          </div>
+          <h3 class="sample-flag-title">Hard-coat anodize specified after finish grinding</h3>
+          <div class="sample-flag-action-box">
+            <div class="sample-flag-action-label">Action</div>
+            <div class="sample-flag-action-text">
+              Confirm coating sequence with customer before quoting. If post-grind anodize is intentional, recalculate pre-coat bore dimensions and add masking time to the routing.
+            </div>
+          </div>
+          <p class="sample-flag-body">
+            Drawing calls out ±0.0005" post-coat tolerance on two precision bores (Ø.500 ±.0005, sheet 1) finished to size before the hard-coat anodize step (Note 7, sheet 2). Type III hard-coat builds 0.0010–0.0020" per side — total ID growth of 0.0020–0.0040" — which will push both bores out of tolerance unless masked during coating OR pre-machined oversize with reverse-calculated allowance.
+          </p>
+          <div class="sample-flag-cost">
+            💰 <strong>Cost impact:</strong> $1,800–$4,200 per lot of 50 (masking labor + scrap risk @ 8% on uncaught variant)
+          </div>
+          <div class="sample-flag-location">
+            <span>📍 Location:</span> Note 7 (sheet 2) + Ø.500 bore callout (sheet 1)
+          </div>
+        </div>
+        <p class="sample-flag-caption">
+          One card per risk. Action statement first, technical reasoning below, dollarized impact when the math is reasonable. Cards roll up under a <strong>verdict</strong> ("Ready to quote" · "Quote with assumptions" · "Clarifications required" · "Recommend no-bid") and a consolidated <strong>"Ask the customer"</strong> checklist.
+        </p>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS — moved up per UX feedback. Email is now opt-in. -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>How it works</h2>
+        <div class="grid grid-3">
+          <div class="step">
+            <div class="step-num">1</div>
+            <h3>Upload your RFQ package</h3>
+            <p>PDFs, drawings, native and neutral CAD (STEP, IGES, DXF, SLDPRT, IPT, CATPart, DWG, STL), G-code, BOM spreadsheets, or just paste the customer's email body if that's what you got.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <h3>AI analyzes in the background</h3>
+            <p>Typical: under 5 minutes. The page auto-updates the moment results are ready — no refresh, no email required. Bookmark the URL and come back any time, even days later.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <h3>Review the structured risk report</h3>
+            <p>One-line <strong>verdict</strong> at the top (ready to quote · clarifications required · recommend no-bid). Consolidated <strong>"Ask the customer"</strong> checklist with a one-click copy. Severity-ranked flag cards with confidence scores, action statements, and dollarized cost impact. Download as JSON for ERP archiving. You make every call.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IT SURFACES — risk taxonomy, kept but moved below How-It-Works -->
+    <section id="how" class="section">
+      <div class="container">
+        <h2>What QuoteScout surfaces in every RFQ</h2>
+        <p class="lede" style="margin-bottom: 24px;">Four kinds of risk show up in almost every precision RFQ. We organize them by how urgently you should act.</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <span class="flag flag-red">RED</span>
+            <h3>Must resolve before quoting</h3>
+            <p>Things that can't be priced around — impossible operation sequences, missing required certifications, contradictions between drawing and spec. Fix these first or no-bid.</p>
+          </div>
+          <div class="card">
+            <span class="flag flag-amber">AMBER</span>
+            <h3>Capability check needed</h3>
+            <p>Requirements your shop may not currently support — quality certifications (ISO 9001, AS9100, IATF 16949, ISO 13485, API Q1, ASME), process accreditations (NADCAP), cybersecurity (NIST 800-171, CMMC), source-inspected processes, customer-approved vendor lists. Confirm before committing.</p>
+          </div>
+          <div class="card">
+            <span class="flag flag-yellow">YELLOW</span>
+            <h3>Hidden costs</h3>
+            <p>Operations the drawing assumes but doesn't explicitly list — stress relief, post-coat machining, hand deburr, FAI prep, 100% inspection. Easy to skim past, expensive to absorb.</p>
+          </div>
+          <div class="card">
+            <span class="flag flag-purple">PURPLE</span>
+            <h3>Verify before action</h3>
+            <p>When the AI isn't fully confident, you see PURPLE. Specific items to confirm with engineering or the shop floor before committing. We tell you what we don't know.</p>
+          </div>
+        </div>
+
+        <div class="real-miss">
+          <span class="real-miss-label">An example, not a hypothetical</span>
+          <p>The hard-coat anodize case above is real. We see it across aerospace brackets, hydraulic manifolds, and medical-device housings — anywhere designers spec a Type III coat after finish machining without flagging the masking question. A senior estimator catches it. A rushed estimator absorbs the rework. QuoteScout flags it the same way every time.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON -->
+    <section class="section">
+      <div class="container">
+        <h2>Why not just use ChatGPT or a spreadsheet?</h2>
+        <p class="lede">Generic AI extracts text. Spreadsheets count operations. Neither knows what to look for in a precision RFQ. Here's what's different.</p>
+
+        <div class="comparison-table-wrap">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>QuoteScout</th>
+                <th>ChatGPT / Generic AI</th>
+                <th>Spreadsheet review</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Manufacturing risk taxonomy</th>
+                <td class="yes">Sequence, Compliance, Dimensional, Outside Service, Precision Blind Spots</td>
+                <td class="no">None. Treats RFQ as generic text.</td>
+                <td class="no">Whatever the estimator remembers to check.</td>
+              </tr>
+              <tr>
+                <th>Confidence scoring per flag</th>
+                <td class="yes">0–100% with PURPLE flag below 70%</td>
+                <td class="no">No score. AI guesses with no signal.</td>
+                <td class="no">No score.</td>
+              </tr>
+              <tr>
+                <th>Cross-document reasoning</th>
+                <td class="yes">Reads drawing + spec + PO + quality clauses as one package</td>
+                <td class="partial">Possible with prompting; no built-in logic.</td>
+                <td class="no">Manual cross-reference, error-prone.</td>
+              </tr>
+              <tr>
+                <th>Reads scanned drawings & title blocks</th>
+                <td class="yes">Native vision: PDFs, scans, CAD exports</td>
+                <td class="partial">Vision works; no manufacturing context.</td>
+                <td class="no">N/A — human reads.</td>
+              </tr>
+              <tr>
+                <th>Legal language guardrails</th>
+                <td class="yes">Never says "bid this" or outputs prices/scores</td>
+                <td class="no">Will guess prices and recommend bids.</td>
+                <td class="no">N/A.</td>
+              </tr>
+              <tr>
+                <th>NDA before any upload</th>
+                <td class="yes">Mutual NDA, click-to-sign, audit-logged</td>
+                <td class="no">Your data goes to OpenAI for training (default tier).</td>
+                <td class="no">N/A — files stay on your machine.</td>
+              </tr>
+              <tr>
+                <th>Files deleted within 60 seconds</th>
+                <td class="yes">Yes, before the response is sent</td>
+                <td class="no">Retained for 30 days (default).</td>
+                <td class="yes">Stays on your machine.</td>
+              </tr>
+              <tr>
+                <th>Time per RFQ review</th>
+                <td class="yes">Typical ~5 min · result loads on-page · bookmarkable URL · optional email</td>
+                <td class="partial">5–10 minutes if you know what to ask.</td>
+                <td class="no">30–45 minutes.</td>
+              </tr>
+              <tr>
+                <th>Cost</th>
+                <td class="yes">Free for the first 500 shops</td>
+                <td class="partial">$20–60/mo per seat</td>
+                <td class="yes">Free.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="micro center" style="margin-top: 16px;">Bottom line: QuoteScout is built specifically for the moment between "RFQ arrives" and "estimator opens it." Other tools sit elsewhere in the workflow.</p>
+      </div>
+    </section>
+
+    <!-- TRUST -->
+    <section id="trust" class="section section-alt">
+      <div class="container">
+        <h2>What happens to your file</h2>
+        <div class="trust-list">
+          <div class="trust-item">
+            <span class="check">✓</span>
+            <div>
+              <strong>Mutual NDA before any upload.</strong>
+              You and QuoteScout are both bound to confidentiality before you upload anything. Click-to-sign on the next page.
+            </div>
+          </div>
+          <div class="trust-item">
+            <span class="check">✓</span>
+            <div>
+              <strong>Files deleted within 60 seconds.</strong>
+              Your PDF is processed in memory and deleted before the response is sent to you. We log only metadata: filename, size, flag count, timestamp.
+            </div>
+          </div>
+          <div class="trust-item">
+            <span class="check">✓</span>
+            <div>
+              <strong>Encrypted in transit.</strong>
+              All uploads use HTTPS/TLS. Your file content never touches our database.
+            </div>
+          </div>
+          <div class="trust-item">
+            <span class="check">✓</span>
+            <div>
+              <strong>No third-party sharing.</strong>
+              We do not sell, share, or train external models on your data. We use Anthropic's Claude API for analysis — Anthropic does not train models on API traffic. See <a href="https://www.anthropic.com/legal" target="_blank" rel="noopener">anthropic.com/legal</a> for their data policy.
+            </div>
+          </div>
+          <div class="trust-item">
+            <span class="check">✗</span>
+            <div>
+              <strong>ITAR / Defense work is not permitted.</strong>
+              QuoteScout V1 is for non-ITAR commercial work only. The system blocks RFQs containing ITAR/EAR/MIL-SPEC defense markers.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IT WON'T DO -->
+    <section class="section">
+      <div class="container">
+        <h2>What QuoteScout will <em>not</em> do</h2>
+        <p class="lede">
+          We are deliberate about this. The risk language matters as much as the risk detection.
+        </p>
+        <ul class="bullet-list">
+          <li>Will not say "bid this job" or "don't bid this job"</li>
+          <li>Will not generate prices or cost estimates</li>
+          <li>Will not guarantee manufacturability of any feature</li>
+          <li>Will not replace your engineering judgment</li>
+          <li>Will not approve, reject, or recommend any decision</li>
+        </ul>
+        <p class="lede">
+          What we will do: surface what's there. Flag what's hidden. Show our confidence level.
+          Then get out of your way.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section section-alt">
+      <div class="container">
+        <h2>FAQ</h2>
+
+        <div class="faq-item">
+          <h3>Is this really free?</h3>
+          <p>Yes — for the first 500 shops. We're in free beta to validate the value before charging. After 500 shops, we'll introduce paid tiers. Founding members from the beta get a permanent discount.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>What file types do you accept?</h3>
+          <p>Most common RFQ-package formats — PDF, images, DXF, STEP/STP, IGES/IGS, STL/OBJ/3MF, Parasolid, SolidWorks (.sldprt/.sldasm), Inventor, Creo, CATIA, AutoCAD DWG, Fusion 360, G-code, and BOM spreadsheets (Excel/CSV). The depth of analysis depends on the format: PDFs and images get full vision analysis; DXF, STEP, and IGES are parsed for header metadata and text content; native binary CAD (SLDPRT, .ipt, .CATPart, .dwg, etc.) yields only metadata + embedded strings — so if you upload only a native CAD file with no PDF drawing, the AI will flag that visual confirmation isn't possible from binary geometry alone. Best practice: send a PDF drawing alongside any native CAD file.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>How is this different from ChatGPT?</h3>
+          <p>ChatGPT extracts text. QuoteScout has a manufacturing-specific risk taxonomy and prompt layer built around precision-machining failure modes ChatGPT doesn't know about. Every flag carries a confidence score and a category — Sequence Violation, Hidden Operation, Compliance Gap, Dimensional Compensation — so you can verify systematically rather than re-reading the whole document.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>What's a "shop profile" and do I need one?</h3>
+          <p>Optional but worth two minutes. You describe your shop's machines, certs (held and not held), AVL, capacity envelope, and shop rate range — and the AI switches from generic risk-listing to <strong>gap analysis</strong>. Flags become "your shop holds AS9100, confirmed in scope" or "your CMM travel (700×1000×600 mm) won't cover this Ø1254 mm part — sub-tier inspection required." Cost estimates use your real shop rate. The profile is stored only in your browser via localStorage — never on our servers until you submit an analysis. <a href="/profile.html">Set up your profile →</a></p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Who built this?</h3>
+          <p>Sid K. I work in precision manufacturing operations during the day. QuoteScout is what I build in the evenings and on weekends — the tool I wish I'd had on my own desk. Every flag in the system is calibrated against a real miss I've seen on a real shop floor.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>What if your AI is wrong?</h3>
+          <p>Every flag has a confidence score. Anything below 70% confidence shows as PURPLE with a "verify with shop floor" prompt. Every output ends with a mandatory disclaimer: "All flags require verification by qualified engineering personnel before pricing." You stay in control.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Can I use this for defense work?</h3>
+          <p>No — ITAR / EAR / MIL-SPEC defense work is explicitly prohibited in V1. The system actively blocks RFQs containing those markers. We'll add ITAR-cleared infrastructure in Phase 4 (Month 18+).</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>I'm worried about uploading proprietary drawings. What protects me?</h3>
+          <p>(1) Click-to-sign Mutual NDA before upload. (2) Files deleted within 60 seconds — never stored. (3) Database stores only metadata (filename, size, flag count). (4) HTTPS/TLS in transit. (5) No third-party sharing or model training. If you want to test before uploading anything sensitive: send a public RFQ from a request-for-proposal listing site to start.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- WAITLIST / LEAD MAGNET -->
+    <section class="section" id="waitlist-anchor">
+      <div class="container container-narrow">
+        <div class="form-card">
+          <h2>Not ready to upload? Get the cheat sheet.</h2>
+          <p>Twelve precision-machining estimating risks across pre, in-process, and post-machining. Tape it to the estimating desk. Free. We'll email it within a minute.</p>
+
+          <form id="waitlist-form" class="waitlist-form">
+            <div class="form-row">
+              <input type="email" id="wl-email" placeholder="Your work email" required />
+              <input type="text" id="wl-company" placeholder="Shop / company (optional)" />
+              <button type="submit" class="btn btn-primary">Send me the cheat sheet</button>
+            </div>
+            <p class="micro">No spam. Unsubscribe anytime. We'll send the cheat sheet now and one short update per month — that's it.</p>
+            <div id="wl-error" class="alert alert-error hidden"></div>
+            <div id="wl-success" class="alert alert-success hidden">
+              <p style="margin: 0 0 8px;"><strong>✓ Sent.</strong> The cheat sheet is on its way to your inbox.</p>
+              <p style="margin: 0 0 12px;">📬 <strong>If you don't see it within 2 minutes, check your spam / junk folder.</strong> Mark it as "Not Junk" and add <code>onboarding@resend.dev</code> to your contacts so future emails arrive in your inbox.</p>
+              <p style="margin: 0;">Or open the cheat sheet right now → <a href="/cheat-sheet.html" class="btn btn-secondary btn-small" style="margin-left: 6px;">Open Cheat Sheet</a></p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section section-cta">
+      <div class="container center">
+        <h2>Run your first analysis in 2 minutes.</h2>
+        <p class="lede">Free for the first 500 shops. NDA on the next page.</p>
+        <a href="/nda.html" class="btn btn-primary btn-large">Start Free Analysis →</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-disclaimer">
+        QuoteScout does not price jobs, guarantee manufacturability, or replace engineering judgment.
+        It identifies areas requiring attention so teams can make informed decisions faster.
+        All flags require verification by qualified engineering personnel before pricing.
+      </p>
+      <nav class="footer-nav">
+        <a href="/sample.html">Sample analysis</a>
+        <a href="/cheat-sheet.html">Cheat sheet</a>
+        <a href="/terms.html">Terms of Service</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/nda.html">Mutual NDA</a>
+      </nav>
+      <p class="micro">© 2026 QuoteScout. Free Beta. Built by Sid K — evenings and weekends.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Waitlist form
+    (function () {
+      const form = document.getElementById('waitlist-form');
+      if (!form) return;
+      const emailInput = document.getElementById('wl-email');
+      const companyInput = document.getElementById('wl-company');
+      const errBox = document.getElementById('wl-error');
+      const okBox = document.getElementById('wl-success');
+      const submit = form.querySelector('button[type="submit"]');
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        errBox.classList.add('hidden');
+        okBox.classList.add('hidden');
+        submit.disabled = true;
+        submit.textContent = 'Sending...';
+
+        try {
+          const res = await fetch('/api/waitlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: emailInput.value.trim(),
+              company: companyInput.value.trim() || undefined,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not save your email.');
+
+          form.querySelector('.form-row').classList.add('hidden');
+          okBox.classList.remove('hidden');
+          // Scroll the success message into view so the user actually sees it
+          okBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (err) {
+          errBox.textContent = err.message;
+          errBox.classList.remove('hidden');
+          submit.disabled = false;
+          submit.textContent = 'Send me the cheat sheet';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
