@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Mutual NDA · QuoteScout</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+  <!-- jsPDF for client-side PDF generation. Loaded only on this page. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-flex">
+      <a href="/" class="logo">QuoteScout</a>
+      <nav class="header-nav">
+        <a href="/">Home</a>
+        <a href="/cheat-sheet.html">Cheat sheet</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container narrow" style="padding-top: 32px; padding-bottom: 64px;">
+
+    <!-- Pre-signing: NDA form -->
+    <div id="nda-form-section">
+      <h1 style="margin: 0 0 6px;">Mutual Non-Disclosure Agreement</h1>
+      <p class="lede" style="margin: 0 0 18px;">
+        Before you upload anything, you and QuoteScout are mutually bound to confidentiality.
+        This is enforceable. Read it, then click to sign.
+      </p>
+
+      <div class="nda-terms">
+        <h2 style="font-size: 16px; margin-top: 0;">1. Parties &amp; Effective Date</h2>
+        <p>This Mutual Non-Disclosure Agreement ("Agreement") is entered into between <strong>QuoteScout</strong> (operated by Sid K, doing business as an individual) and <strong>you</strong>, the individual or entity identified in the signature block below, effective on the date of electronic signature ("Effective Date").</p>
+
+        <h2 style="font-size: 16px;">2. Confidential Information</h2>
+        <p>"Confidential Information" means any non-public information disclosed by either party to the other, including but not limited to: engineering drawings; RFQ packages; specifications; bills of materials; pricing data; supplier lists; manufacturing processes; quality clauses; software source code; analysis output; and any other information marked as confidential or that a reasonable person would understand to be confidential under the circumstances.</p>
+
+        <h2 style="font-size: 16px;">3. Obligations</h2>
+        <p>Each party agrees to: (a) hold the other's Confidential Information in strict confidence; (b) use Confidential Information solely to evaluate, perform, or use the QuoteScout analysis service; (c) protect Confidential Information using at least the same degree of care it uses for its own confidential information, and in no event less than reasonable care; (d) not disclose Confidential Information to any third party without prior written consent, except to employees, contractors, or service providers who have a need to know and are bound by substantially similar confidentiality obligations.</p>
+
+        <h2 style="font-size: 16px;">4. Exclusions</h2>
+        <p>Confidential Information does not include information that: (a) is or becomes publicly known without breach of this Agreement; (b) was rightfully known by the receiving party before disclosure; (c) is independently developed without reference to the Confidential Information; or (d) is rightfully received from a third party without confidentiality obligations.</p>
+
+        <h2 style="font-size: 16px;">5. Data Handling Commitments</h2>
+        <p>QuoteScout further commits that uploaded files are: (i) processed in memory and deleted within sixty (60) seconds of analysis completion; (ii) never stored beyond metadata (filename, size, timestamp, flag count); (iii) transmitted only over HTTPS/TLS; (iv) not used to train QuoteScout's or any third party's AI models; (v) sent to Anthropic's Claude API for analysis only, under Anthropic's data policy stating they do not train on API traffic.</p>
+
+        <h2 style="font-size: 16px;">6. ITAR / Export-Control Restriction</h2>
+        <p>This service is for non-ITAR, non-EAR-controlled commercial work only. You represent that any documents uploaded do not contain information subject to ITAR (22 CFR §§ 120-130), EAR (15 CFR §§ 730-774), Department of Defense classification, or other U.S. export-control regulations. QuoteScout's pre-screen will reject documents containing export-control markers; you remain solely responsible for export-control compliance.</p>
+
+        <h2 style="font-size: 16px;">7. Term &amp; Termination</h2>
+        <p>This Agreement remains in effect for two (2) years from the Effective Date with respect to each item of Confidential Information disclosed during that period. Obligations survive termination as to information disclosed prior.</p>
+
+        <h2 style="font-size: 16px;">8. Disclaimers</h2>
+        <p>The QuoteScout analysis service is provided "AS IS" without warranty of any kind. QuoteScout does not approve, price, or guarantee the manufacturability of any RFQ. All flags, recommendations, and verifications produced by the service must be independently reviewed by qualified engineering personnel before any pricing or production decision is made.</p>
+
+        <h2 style="font-size: 16px;">9. Governing Law</h2>
+        <p>This Agreement is governed by the laws of the State of Texas, United States, without regard to its conflicts-of-laws principles.</p>
+
+        <h2 style="font-size: 16px;">10. Entire Agreement</h2>
+        <p>This Agreement is the entire agreement between the parties with respect to Confidential Information and supersedes all prior agreements. Any modifications must be in writing.</p>
+      </div>
+
+      <div id="nda-status" class="alert hidden" style="margin: 18px 0;"></div>
+
+      <form id="nda-form" style="margin-top: 24px;">
+        <h2 style="font-size: 16px; margin-bottom: 12px;">Signature</h2>
+
+        <div class="form-group">
+          <label for="full-name">Your full legal name</label>
+          <input type="text" id="full-name" name="full_name" required placeholder="e.g. Jane A. Smith" />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Work email</label>
+          <input type="email" id="email" name="email" required placeholder="you@shop.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="company">Company / shop name</label>
+          <input type="text" id="company" name="company" required placeholder="e.g. Acme Precision Machining" />
+        </div>
+
+        <div class="form-group">
+          <label for="role">Your role <span class="micro" style="color:#888; font-weight: normal;">(optional)</span></label>
+          <input type="text" id="role" name="role" placeholder="e.g. Estimator, QA Manager, Owner" />
+        </div>
+
+        <label class="email-optin" style="cursor: default; background: #fef9e7; border-color: #fde68a; border-left: 4px solid #d97706;">
+          <input type="checkbox" id="agree-checkbox" required />
+          <span>
+            <strong>I have read and agree to the terms above.</strong><br>
+            <span class="email-optin-sub">By checking this box and clicking "Sign &amp; Continue", I electronically sign this Mutual NDA. My IP address and timestamp will be recorded as proof of signature.</span>
+          </span>
+        </label>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px;">
+          <button type="submit" id="sign-btn" class="btn btn-primary btn-large">Sign &amp; Continue →</button>
+          <a href="/" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Post-signing: confirmation + PDF download + continue -->
+    <div id="nda-success-section" class="hidden">
+      <div style="text-align: center; padding: 32px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin-bottom: 24px;">
+        <div style="font-size: 48px; line-height: 1; margin-bottom: 12px;">✓</div>
+        <h2 style="margin: 0 0 6px; color: #166534;">NDA signed</h2>
+        <p style="margin: 0; color: #166534;">Your signature was recorded at <span id="signed-time"></span>.</p>
+      </div>
+
+      <div style="background: white; border: 1px solid #d8cdb5; border-radius: 8px; padding: 22px 24px; margin-bottom: 24px;">
+        <h3 style="margin: 0 0 6px; font-size: 16px;">📄 Download a signed copy</h3>
+        <p style="font-size: 13px; color: #555; line-height: 1.55; margin: 0 0 12px;">
+          Get a formal PDF of this NDA with your signature details — useful for your records or for sharing with your legal / contracts team.
+        </p>
+        <button id="download-pdf-btn" class="btn btn-secondary">⬇ Download signed NDA (PDF)</button>
+        <p class="micro" style="color: #888; margin-top: 10px;">
+          The PDF is generated in your browser using your stored signature details. Nothing additional is sent to our server.
+        </p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="/app.html" class="btn btn-primary btn-large">Continue to upload →</a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>QuoteScout · Built by Sid K · <a href="/">Home</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const form = document.getElementById('nda-form');
+    const statusBanner = document.getElementById('nda-status');
+    const formSection = document.getElementById('nda-form-section');
+    const successSection = document.getElementById('nda-success-section');
+    const signedTimeEl = document.getElementById('signed-time');
+
+    // Holds the signing details so the PDF generator can use them
+    let signedData = null;
+
+    function showStatus(msg, isError) {
+      statusBanner.textContent = msg;
+      statusBanner.className = 'alert ' + (isError ? 'alert-error' : 'alert-info');
+      statusBanner.classList.remove('hidden');
+      statusBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusBanner.classList.add('hidden');
+
+      const fullName = document.getElementById('full-name').value.trim();
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const company = document.getElementById('company').value.trim();
+      const role = document.getElementById('role').value.trim();
+      const agreed = document.getElementById('agree-checkbox').checked;
+
+      if (!fullName || !email || !company || !agreed) {
+        showStatus('Please fill name, email, and company, then check the agreement box.', true);
+        return;
+      }
+
+      const signBtn = document.getElementById('sign-btn');
+      signBtn.disabled = true;
+      signBtn.textContent = 'Signing...';
+
+      try {
+        // Send BOTH new and legacy field-name conventions so whichever
+        // version of /api/nda.js is deployed, the right keys are present.
+        // Legacy API typically reads `name` + `company_name`; new API
+        // reads `full_name` + `company`. Sending both is bulletproof.
+        const res = await fetch('/api/nda', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            // Identity (both naming conventions)
+            full_name: fullName,
+            name: fullName,
+            email,
+            company,
+            company_name: company,
+            // Optional/new fields (ignored harmlessly by legacy API)
+            role: role || null,
+            agreed: true,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Signature submission failed (HTTP ${res.status})`);
+        }
+        const body = await res.json().catch(() => ({}));
+
+        const signedAt = new Date();
+        signedData = {
+          fullName,
+          email,
+          company: company || '',
+          role: role || '',
+          signedAt,
+          ndaId: body.id || body.nda_id || null,
+        };
+
+        // Mark session as having signed NDA (for app.html guard logic)
+        try {
+          sessionStorage.setItem('qs_nda_signed', 'true');
+          sessionStorage.setItem('qs_user_email', email);
+          sessionStorage.setItem('qs_user_company', company || '');
+        } catch (e) { /* private mode might block */ }
+
+        // Show success section
+        formSection.classList.add('hidden');
+        successSection.classList.remove('hidden');
+        signedTimeEl.textContent = signedAt.toLocaleString();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showStatus('⚠️ ' + (err.message || 'Could not sign. Try again.'), true);
+        signBtn.disabled = false;
+        signBtn.textContent = 'Sign & Continue →';
+      }
+    });
+
+    // PDF download
+    document.getElementById('download-pdf-btn').addEventListener('click', () => {
+      if (!signedData) return;
+      generateNdaPdf(signedData);
+    });
+
+    function generateNdaPdf(d) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 54; // ~0.75 inch
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('Mutual Non-Disclosure Agreement', margin, y);
+      y += 24;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      doc.text(`QuoteScout · Executed ${d.signedAt.toLocaleString()}`, margin, y);
+      doc.setTextColor(0);
+      y += 18;
+      doc.setDrawColor(180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 18;
+
+      // Sections
+      const sections = [
+        { h: '1. Parties & Effective Date',
+          b: `This Mutual Non-Disclosure Agreement is entered into between QuoteScout (operated by Sid K, doing business as an individual) and ${d.fullName}${d.company ? ', representing ' + d.company : ''}, effective on the date of electronic signature.` },
+        { h: '2. Confidential Information',
+          b: 'Confidential Information means any non-public information disclosed by either party including engineering drawings, RFQ packages, specifications, BOMs, pricing data, supplier lists, manufacturing processes, quality clauses, source code, analysis output, and information marked confidential or reasonably understood to be confidential.' },
+        { h: '3. Obligations',
+          b: 'Each party agrees to: (a) hold Confidential Information in strict confidence; (b) use it solely to evaluate or use the QuoteScout service; (c) protect it with at least reasonable care; (d) not disclose to third parties without consent except to employees/contractors who have a need to know and are similarly bound.' },
+        { h: '4. Exclusions',
+          b: 'Excludes information that is publicly known without breach; rightfully known before disclosure; independently developed; or rightfully received from a third party without confidentiality obligations.' },
+        { h: '5. Data Handling',
+          b: 'QuoteScout commits that uploaded files are: (i) processed in memory and deleted within 60 seconds of analysis completion; (ii) never stored beyond metadata; (iii) transmitted over HTTPS/TLS; (iv) not used to train any AI model; (v) sent only to Anthropic\'s Claude API under their no-training-on-API-traffic policy.' },
+        { h: '6. ITAR / Export-Control Restriction',
+          b: 'Service is for non-ITAR, non-EAR-controlled commercial work only. Counterparty represents uploaded documents are not subject to ITAR (22 CFR §§ 120-130), EAR (15 CFR §§ 730-774), DoD classification, or other US export controls. Counterparty remains solely responsible for export-control compliance.' },
+        { h: '7. Term',
+          b: 'Two (2) years from the Effective Date with respect to each item of Confidential Information disclosed during that period. Obligations survive termination as to information disclosed prior.' },
+        { h: '8. Disclaimers',
+          b: 'Service is provided "AS IS" without warranty. QuoteScout does not approve, price, or guarantee manufacturability. All output must be independently reviewed by qualified engineering personnel before any pricing or production decision.' },
+        { h: '9. Governing Law', b: 'State of Texas, United States, without regard to conflicts-of-laws principles.' },
+        { h: '10. Entire Agreement', b: 'This Agreement is the entire agreement on Confidential Information and supersedes all prior agreements. Modifications must be in writing.' },
+      ];
+
+      doc.setFontSize(10);
+      sections.forEach(s => {
+        // Check space; new page if needed
+        if (y > pageHeight - 100) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.text(s.h, margin, y);
+        y += 14;
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(s.b, contentWidth);
+        lines.forEach(line => {
+          if (y > pageHeight - 80) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(line, margin, y);
+          y += 13;
+        });
+        y += 8;
+      });
+
+      // Signature block — always on its own breathing room
+      if (y > pageHeight - 220) {
+        doc.addPage();
+        y = margin;
+      } else {
+        y += 12;
+      }
+      doc.setDrawColor(180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 18;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('Electronic Signature', margin, y);
+      y += 18;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+
+      const sigLines = [
+        ['Full name', d.fullName],
+        ['Email', d.email],
+      ];
+      if (d.company) sigLines.push(['Company', d.company]);
+      if (d.role) sigLines.push(['Role', d.role]);
+      sigLines.push(['Signed at', d.signedAt.toLocaleString()]);
+      if (d.ndaId) sigLines.push(['Record ID', String(d.ndaId)]);
+      sigLines.push(['Method', 'Click-to-sign with attestation checkbox']);
+
+      sigLines.forEach(([k, v]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(k + ':', margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(v), margin + 90, y);
+        y += 14;
+      });
+
+      y += 6;
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(110);
+      const attest = doc.splitTextToSize(
+        `By submitting this form on quotescout.vercel.app, the signatory above checked the agreement box and clicked "Sign & Continue", constituting an electronic signature under the U.S. Electronic Signatures in Global and National Commerce Act (E-SIGN Act, 15 U.S.C. § 7001 et seq.). The signing record (timestamp, IP address, and email) is retained server-side as proof of execution.`,
+        contentWidth
+      );
+      attest.forEach(line => {
+        if (y > pageHeight - 50) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y);
+        y += 12;
+      });
+
+      // Footer on each page
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`QuoteScout Mutual NDA · ${d.fullName} · ${i} of ${pageCount}`, margin, pageHeight - 24);
+      }
+
+      const filename = `QuoteScout-NDA-${d.fullName.replace(/[^a-zA-Z0-9]/g, '_')}-${d.signedAt.getFullYear()}${String(d.signedAt.getMonth()+1).padStart(2,'0')}${String(d.signedAt.getDate()).padStart(2,'0')}.pdf`;
+      doc.save(filename);
+    }
+  </script>
+</body>
+</html>
