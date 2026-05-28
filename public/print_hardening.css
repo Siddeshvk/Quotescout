@@ -1,0 +1,103 @@
+/* =====================================================================
+   QuoteScout — PRINT HARDENING (v1.9)
+   Append this to the END of style.css.
+   It is ADDITIVE: it does not re-hide your nav/footer/buttons (your
+   existing @media print block already does that). Two @media print
+   blocks coexist fine in CSS. If you'd rather merge into one, paste me
+   your existing block and I'll combine them.
+
+   Solves three real print failures on long multi-page RFQs:
+     1. Flag cards / table rows / clarifications getting sliced in half
+        across a page boundary.
+     2. Severity colors (RED/AMBER/YELLOW chips) printing as blank white
+        because browsers strip backgrounds by default — fatal for a risk
+        report where color IS the signal.
+     3. Table headers vanishing on page 2+ of a long table.
+
+   Selectors use substring class matching ([class*="flag"]) so they work
+   regardless of your exact class names. No frontend changes required.
+   ===================================================================== */
+
+@media print {
+
+  /* --- 1. FORCE colors + backgrounds to actually print --- */
+  /* Without this, every severity chip, confidence bar, and colored badge
+     prints as white. This single rule is the most important one here. */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;  /* Chrome, Safari, Edge */
+    print-color-adjust: exact !important;          /* standard */
+    color-adjust: exact !important;                /* legacy Firefox */
+  }
+
+  /* --- 2. Page geometry --- */
+  @page {
+    margin: 14mm 12mm;
+    size: auto;
+  }
+
+  /* --- 3. Never slice an atomic unit across a page break --- */
+  /* Element selectors + substring class selectors = robust to your markup.
+     If a single card is taller than one page the browser ignores this and
+     breaks anyway (correct fallback — no harm). */
+  tr,
+  li,
+  blockquote,
+  figure,
+  img,
+  [class*="flag"],
+  [class*="card"],
+  [class*="clarification"],
+  [class*="dimension"],
+  [class*="chip"],
+  [class*="callout"],
+  [class*="action"],
+  [class*="summary"],
+  [class*="verdict"],
+  [class*="gauge"],
+  [class*="section"] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;   /* legacy alias for older engines */
+  }
+
+  /* --- 4. Repeat table headers on every printed page --- */
+  thead { display: table-header-group !important; }
+  tfoot { display: table-footer-group !important; }
+  table { width: 100% !important; border-collapse: collapse !important; }
+  /* Long cell text wraps instead of overflowing off the page edge */
+  td, th { word-break: break-word; overflow-wrap: anywhere; vertical-align: top; }
+
+  /* --- 5. Never strand a heading alone at the bottom of a page --- */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* --- 6. Text widow/orphan control --- */
+  p, li { orphans: 3; widows: 3; }
+
+  /* --- 7. Defeat scroll-container clipping --- */
+  /* If your result renders inside a div with max-height + overflow:auto,
+     print would clip it to one screen. This un-clips everything. If any
+     print layout looks wrong, this is the first line to try removing. */
+  html, body, main,
+  [class*="result"],
+  [class*="report"],
+  [class*="container"],
+  [class*="wrapper"],
+  [class*="output"] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+  * { overflow: visible !important; }
+
+  /* --- 8. Tidy: avoid printing link URLs after every anchor --- */
+  /* Some print styles add "(https://...)" after links. Suppress it. */
+  a[href]::after { content: "" !important; }
+
+  /* --- 9. OPTIONAL: start each major analysis section on a fresh page. --- */
+  /* Off by default (wastes paper on short reports). Uncomment ONE of these
+     if you want hard section breaks on long reports. */
+  /* [class*="section"] { break-before: page !important; } */
+}
