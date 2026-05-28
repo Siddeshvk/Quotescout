@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standards KB Admin · QuoteScout</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .admin-shell { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: #f8f9fb; border: 1px solid #e2e6ee; border-radius: 8px; padding: 14px; }
+    .stat-num { font-size: 24px; font-weight: 700; color: #1a2540; }
+    .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #eef0f4; text-align: left; vertical-align: top; }
+    th { background: #f8f9fb; font-weight: 600; color: #1a2540; }
+    .status-done { color: #065f46; }
+    .status-pending { color: #92400e; }
+    .status-enriching { color: #1e40af; }
+    .status-failed { color: #991b1b; }
+    .status-skip { color: #6b7280; }
+    .summary-cell { max-width: 400px; font-size: 12px; color: #4b5563; }
+    .enrich-btn { padding: 4px 10px; background: #1a2540; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+    .enrich-btn:disabled { opacity: 0.5; cursor: wait; }
+    .filter-row { margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .filter-row input, .filter-row select { padding: 6px 10px; border: 1px solid #d4d8e1; border-radius: 4px; font-size: 13px; }
+    .config-warning { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<nav style="padding: 16px 24px; border-bottom: 1px solid #eef0f4; max-width: 1200px; margin: 0 auto;">
+  <a href="/" style="font-weight: 700; text-decoration: none; color: #1a2540; font-size: 18px;">QuoteScout</a>
+  <span style="float: right;">
+    <a href="/app.html" style="color: #4b5563; text-decoration: none; margin-right: 16px;">Analyze RFQ</a>
+    <a href="/profile.html" style="color: #4b5563; text-decoration: none; margin-right: 16px;">Shop Profile</a>
+    <a href="/standards-admin.html" style="color: #1a2540; font-weight: 600; text-decoration: none;">Standards KB</a>
+  </span>
+</nav>
+
+<main class="admin-shell">
+  <h1 style="margin-bottom: 6px;">Standards Knowledge Base</h1>
+  <p style="color: #6b7280; margin-bottom: 24px;">
+    Self-building cache of precision-manufacturing specs. Each spec is enriched once via Claude Haiku 4.5 + web search, then served from this DB forever.
+  </p>
+
+  <div id="configWarning" class="config-warning" style="display:none;">
+    <strong>Config needed:</strong> Set SUPABASE_URL and SUPABASE_ANON_KEY below to connect. These are the same values your Vercel env vars use.
+    <div style="margin-top: 8px;">
+      <input type="text" id="supaUrl" placeholder="https://xxx.supabase.co" style="width: 280px;">
+      <input type="text" id="supaKey" placeholder="anon key" style="width: 280px;">
+      <button onclick="saveCreds()" class="enrich-btn">Save</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="filter-row">
+    <input type="text" id="searchBox" placeholder="Search spec number or title..." style="flex: 1; min-width: 240px;">
+    <select id="statusFilter">
+      <option value="">All statuses</option>
+      <option value="done">Enriched (done)</option>
+      <option value="pending">Pending</option>
+      <option value="enriching">Enriching</option>
+      <option value="failed">Failed</option>
+      <option value="skip">Skip (customer-internal)</option>
+    </select>
+    <select id="categoryFilter">
+      <option value="">All categories</option>
+    </select>
+    <button onclick="loadData()" class="enrich-btn">Refresh</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Spec</th>
+        <th>Title</th>
+        <th>Cat</th>
+        <th>Status</th>
+        <th>Hits</th>
+        <th>Last Seen</th>
+        <th>Cost</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="rowsBody">
+      <tr><td colspan="8" style="text-align: center; color: #9ca3af; padding: 24px;">Loading…</td></tr>
+    </tbody>
+  </table>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const CREDS_KEY = 'qs_admin_creds';
+  let creds = null;
+  let allRows = [];
+
+  function loadCreds() {
+    try {
+      const raw = localStorage.getItem(CREDS_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  }
+
+  window.saveCreds = function () {
+    const url = document.getElementById('supaUrl').value.trim();
+    const key = document.getElementById('supaKey').value.trim();
+    if (!url || !key) { alert('Both URL and key are required.'); return; }
+    creds = { url, key };
+    localStorage.setItem(CREDS_KEY, JSON.stringify(creds));
+    document.getElementById('configWarning').style.display = 'none';
+    loadData();
+  };
+
+  async function supaFetch(path) {
+    if (!creds) throw new Error('No credentials');
+    const r = await fetch(creds.url + '/rest/v1/' + path, {
+      headers: {
+        'apikey': creds.key,
+        'Authorization': 'Bearer ' + creds.key,
+      },
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  function renderStats() {
+    const total = allRows.length;
+    const done = allRows.filter(r => r.enrichment_status === 'done').length;
+    const pending = allRows.filter(r => r.enrichment_status === 'pending').length;
+    const failed = allRows.filter(r => r.enrichment_status === 'failed').length;
+    const totalCost = allRows.reduce((s, r) => s + (parseFloat(r.enrichment_cost) || 0), 0);
+    const totalHits = allRows.reduce((s, r) => s + (parseInt(r.hit_count, 10) || 0), 0);
+
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total specs</div></div>
+      <div class="stat-card"><div class="stat-num status-done">${done}</div><div class="stat-label">Enriched</div></div>
+      <div class="stat-card"><div class="stat-num status-pending">${pending}</div><div class="stat-label">Pending</div></div>
+      <div class="stat-card"><div class="stat-num status-failed">${failed}</div><div class="stat-label">Failed</div></div>
+      <div class="stat-card"><div class="stat-num">${totalHits}</div><div class="stat-label">Total hits</div></div>
+      <div class="stat-card"><div class="stat-num">$${totalCost.toFixed(2)}</div><div class="stat-label">Lifetime cost</div></div>
+    `;
+  }
+
+  function populateCategoryFilter() {
+    const cats = [...new Set(allRows.map(r => r.category).filter(Boolean))].sort();
+    const sel = document.getElementById('categoryFilter');
+    sel.innerHTML = '<option value="">All categories</option>' +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  function renderRows() {
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    const statusF = document.getElementById('statusFilter').value;
+    const catF = document.getElementById('categoryFilter').value;
+
+    const filtered = allRows.filter(r => {
+      if (statusF && r.enrichment_status !== statusF) return false;
+      if (catF && r.category !== catF) return false;
+      if (q) {
+        const hay = (r.spec_number + ' ' + (r.title || '')).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (!filtered.length) {
+      document.getElementById('rowsBody').innerHTML =
+        '<tr><td colspan="8" style="text-align:center; color:#9ca3af; padding:24px;">No specs match.</td></tr>';
+      return;
+    }
+
+    document.getElementById('rowsBody').innerHTML = filtered.map(r => {
+      const cost = parseFloat(r.enrichment_cost) || 0;
+      const lastSeen = r.last_seen_at ? new Date(r.last_seen_at).toLocaleDateString() : '-';
+      return `
+        <tr>
+          <td><strong>${r.spec_number}</strong></td>
+          <td>${r.title || ''}</td>
+          <td>${r.category || ''}</td>
+          <td class="status-${r.enrichment_status}">${r.enrichment_status}</td>
+          <td>${r.hit_count || 0}</td>
+          <td>${lastSeen}</td>
+          <td>${cost > 0 ? '$' + cost.toFixed(4) : '-'}</td>
+          <td><button class="enrich-btn" data-spec="${r.spec_number}" ${r.enrichment_status === 'enriching' ? 'disabled' : ''}>Enrich now</button></td>
+        </tr>
+      `;
+    }).join('');
+
+    document.querySelectorAll('button.enrich-btn[data-spec]').forEach(btn => {
+      btn.addEventListener('click', () => enrichNow(btn.dataset.spec, btn));
+    });
+  }
+
+  async function enrichNow(spec, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Enriching…';
+    try {
+      const r = await fetch('/api/enrich-standard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spec_number: spec }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      btn.textContent = 'Done';
+      setTimeout(loadData, 500);
+    } catch (e) {
+      btn.textContent = 'Failed';
+      alert('Enrichment failed: ' + e.message);
+    }
+  }
+
+  window.loadData = async function () {
+    try {
+      const rows = await supaFetch('standards_kb?select=*&order=hit_count.desc,spec_number.asc&limit=500');
+      allRows = rows;
+      renderStats();
+      populateCategoryFilter();
+      renderRows();
+    } catch (e) {
+      document.getElementById('rowsBody').innerHTML =
+        '<tr><td colspan="8" style="text-align:center; color:#991b1b; padding:24px;">Could not load: ' + e.message + '. Check credentials.</td></tr>';
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    creds = loadCreds();
+    if (!creds) {
+      document.getElementById('configWarning').style.display = 'block';
+    } else {
+      loadData();
+    }
+    document.getElementById('searchBox').addEventListener('input', renderRows);
+    document.getElementById('statusFilter').addEventListener('change', renderRows);
+    document.getElementById('categoryFilter').addEventListener('change', renderRows);
+  });
+})();
+</script>
+
+</body>
+</html>
