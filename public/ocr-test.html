@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuoteScout · OCR probe</title>
+<style>
+  body{font:14px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;max-width:860px;margin:32px auto;padding:0 16px;color:#16202b;background:#fafbfc}
+  h1{font-size:19px;margin:0 0 4px} .sub{color:#5b6878;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #dde3ea;border-radius:10px;padding:16px 18px;margin:12px 0}
+  pre{background:#101826;color:#d9e4f5;padding:14px;border-radius:8px;overflow:auto;white-space:pre-wrap;font-size:12.5px;margin:8px 0 0}
+  button{padding:8px 16px;border-radius:7px;border:1px solid #2b6cb0;background:#2b6cb0;color:#fff;font-weight:600;cursor:pointer;margin-left:8px}
+  button:disabled{opacity:.5;cursor:wait}
+  input[type=file]{font-size:13px}
+  small{color:#5b6878}
+  .hide{display:none}
+  .bar{height:8px;background:#e3e9f0;border-radius:5px;overflow:hidden;margin:10px 0 4px}
+  .bar>i{display:block;height:100%;width:0;background:#2b6cb0;transition:width .15s}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .ok{background:#e6f4ea;color:#1e7a3c} .warn{background:#fdeede;color:#9a5b00}
+  .warns{margin:8px 0 0;padding-left:18px} .warns li{margin:3px 0;color:#5b6878}
+  img.prev{max-width:100%;border:1px solid #dde3ea;border-radius:8px;margin-top:8px}
+</style></head><body>
+<h1>QuoteScout — OCR probe</h1>
+<p class="sub">Drop in a <strong>scanned drawing</strong> (PNG/JPG). Text is extracted <strong>in your browser</strong> — the image never leaves this machine. This is a standalone test of the OCR pipeline before it's wired into the upload flow.</p>
+
+<div class="card">
+  <input id="f" type="file" accept="image/*">
+  <button id="go" disabled>Extract text</button>
+  <div id="prog" class="hide"><div class="bar"><i id="pbar"></i></div><small id="pstat">starting…</small></div>
+  <img id="prev" class="prev hide" alt="preview">
+</div>
+
+<div id="out" class="card hide">
+  <div><span id="conf" class="badge"></span> &nbsp;<small id="meta"></small></div>
+  <ul id="warns" class="warns"></ul>
+  <pre id="text"></pre>
+</div>
+
+<p><small>Tesseract.js runs as WebAssembly in the browser. First run downloads the recognition model (~a few MB) once, then caches it.</small></p>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script type="module">
+  import { runOcr, OCR_VERSION } from './ocr.js';
+  const $ = (id) => document.getElementById(id);
+  let file = null;
+
+  $('f').addEventListener('change', (e) => {
+    file = e.target.files[0] || null;
+    $('go').disabled = !file;
+    if (file) {
+      const url = URL.createObjectURL(file);
+      $('prev').src = url; $('prev').classList.remove('hide');
+    }
+  });
+
+  $('go').addEventListener('click', async () => {
+    if (!file) return;
+    $('go').disabled = true;
+    $('out').classList.add('hide');
+    $('prog').classList.remove('hide');
+    $('pbar').style.width = '0%'; $('pstat').textContent = 'starting…';
+    try {
+      const r = await runOcr(file, {
+        onProgress: (p, status) => { $('pbar').style.width = Math.round(p * 100) + '%'; $('pstat').textContent = status || 'working…'; },
+      });
+      $('conf').textContent = r.lowConfidence ? `LOW CONFIDENCE · ${r.meanConfidence}%` : `OK · ${r.meanConfidence}%`;
+      $('conf').className = 'badge ' + (r.lowConfidence ? 'warn' : 'ok');
+      $('meta').textContent = `${r.wordCount} words · ${r.durationMs} ms · ocr.js v${OCR_VERSION}`;
+      $('warns').innerHTML = '';
+      r.warnings.forEach((w) => { const li = document.createElement('li'); li.textContent = w; $('warns').appendChild(li); });
+      $('text').textContent = r.text || '(no text recognized)';
+      $('out').classList.remove('hide');
+    } catch (err) {
+      $('text').textContent = 'Error: ' + (err && err.message || err);
+      $('warns').innerHTML = ''; $('conf').textContent = 'ERROR'; $('conf').className = 'badge warn';
+      $('meta').textContent = ''; $('out').classList.remove('hide');
+    } finally {
+      $('prog').classList.add('hide');
+      $('go').disabled = false;
+    }
+  });
+</script>
+</body></html>
