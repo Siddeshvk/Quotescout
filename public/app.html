@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze RFQ — QuoteScout</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-row">
+      <a href="/" class="brand">QuoteScout</a>
+      <nav class="header-nav">
+        <span id="user-email" style="color: #5a5a5a; font-size: 14px;"></span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="form-page">
+    <div class="container">
+      <div class="form-card">
+        <h1>Upload your RFQ package for analysis</h1>
+        <p>
+          Upload all files for one RFQ — drawing, spec sheet, PO, quality clauses, FAI form, anything
+          the customer sent. The system reads everything as one package, cross-references for
+          conflicts, and returns risk flags in 30–60 seconds. Files are deleted within 60 seconds — never stored.
+        </p>
+
+        <div class="alert alert-info">
+          <strong>Upload your full RFQ package.</strong> We accept PDF, images, DXF, STEP/STP, IGES, STL/OBJ, Parasolid, SolidWorks (.sldprt/.sldasm), Inventor, Creo, CATIA, AutoCAD DWG, Fusion 360, G-code, BOM spreadsheets, and most common formats. Up to 8 files · 50 MB total.
+          <p style="margin: 8px 0 0; font-size: 13px; color: #555;">📌 <strong>For best results:</strong> Include a PDF drawing alongside any native CAD file (.sldprt, .ipt, .CATPart, .dwg, etc.). Binary CAD geometry isn't directly readable — the PDF lets the AI see your dimensions, GD&amp;T, and notes.</p>
+        </div>
+
+        <form id="upload-form">
+          <!-- Shop Profile banner — pulled from localStorage. Shows status + link to edit. -->
+          <div id="shop-profile-banner" class="shop-profile-banner hidden">
+            <div class="shop-profile-icon">🏭</div>
+            <div class="shop-profile-body">
+              <div class="shop-profile-title">
+                <span id="shop-profile-status">Shop profile loaded</span>
+                <span class="shop-profile-name" id="shop-profile-name"></span>
+              </div>
+              <div class="shop-profile-sub" id="shop-profile-sub">
+                Your capabilities, certs, and AVL will be included so the AI does gap analysis instead of generic risk-listing.
+              </div>
+            </div>
+            <a href="/profile.html" class="shop-profile-edit">Edit</a>
+          </div>
+          <div id="shop-profile-prompt" class="shop-profile-prompt hidden">
+            <div>
+              <strong>💡 Run smarter analyses:</strong> Add your shop profile (equipment, certs, AVL, shop rate) and the AI will flag risks <em>relative to your capabilities</em> instead of as generic industry warnings.
+            </div>
+            <a href="/profile.html" class="btn btn-secondary" style="white-space: nowrap;">Set up profile →</a>
+          </div>
+
+          <div class="form-group">
+            <label class="upload-zone" id="drop-zone" for="file-input">
+              <p><strong>Drop your RFQ files here</strong></p>
+              <p>or click to browse</p>
+              <p class="file-info">PDF, images, CAD files (DXF/STEP/IGES/STL/SLDPRT/IPT/CATPart/DWG/etc.), G-code, BOMs · up to 8 files · 50 MB total</p>
+              <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.dxf,.dwg,.step,.stp,.iges,.igs,.stl,.obj,.amf,.3mf,.sldprt,.sldasm,.ipt,.iam,.catpart,.catproduct,.prt,.asm,.f3d,.x_t,.x_b,.sat,.jt,.nc,.tap,.gcode,.csv,.xlsx,.xls,.txt,.doc,.docx" multiple />
+            </label>
+            <div id="file-list" class="file-list"></div>
+          </div>
+
+          <!-- RFQ context / email body — optional but valuable -->
+          <div class="notes-section">
+            <div class="notes-header">
+              <span class="notes-eyebrow">Optional</span>
+              <h3 class="notes-title">📧 Paste the email body or RFQ notes</h3>
+              <p class="notes-sub">
+                The drawing rarely has the full ask. Quantities, quote-by dates, compliance requirements
+                (PPAP level, conflict minerals, RoHS/REACH, TSCA, Cal Prop 65, UFLPA), price-firmness terms,
+                and customer-specific clauses usually live in the email. Paste it here so the analysis can read
+                the contract terms, not just the geometry.
+              </p>
+            </div>
+            <textarea
+              id="email-body"
+              name="email_body"
+              rows="10"
+              maxlength="30000"
+              placeholder="Hello,&#10;&#10;Attached please find a drawing for R121795. EAU is 6. Please quote these parts in quantities of 2, 5, 10 and 20 at John Deere Production Pricing.&#10;&#10;** Please return quote by 5/21/2026 **&#10;&#10;Quotes must include:&#10;- Country source of origin&#10;- Estimated piece weight&#10;- Major material identification&#10;- Standard lead-time&#10;- Minimum order quantity / box quantity&#10;- Manufacturing part number&#10;- Price per piece&#10;- Is level II PPAP available?&#10;&#10;Product Requirements:&#10;- PPAP requirements&#10;- Conflict minerals&#10;- RoHS and REACH compliance statement&#10;- Toxic substance control act&#10;- California Proposition 65&#10;- Regulation of the European Council&#10;- Uyghur Forced Labor Prevention Act&#10;- Persistent Organic Pollutants (POPs)&#10;&#10;Quoted price must remain firm unless a 45 day notice is given with detailed data supporting the said price change.&#10;&#10;Thank you,"
+            ></textarea>
+            <div class="notes-footer">
+              <span class="notes-counter"><span id="notes-count">0</span> / 30,000 characters</span>
+              <span class="notes-hint">Plain text only · ITAR / export-control markers scanned here too</span>
+            </div>
+          </div>
+
+          <div id="error-msg" class="alert alert-error hidden"></div>
+
+          <!-- Optional email opt-in. Page is the primary delivery mechanism;
+               email is a nice-to-have for users who want a copy in their inbox. -->
+          <label class="email-optin">
+            <input type="checkbox" id="wants-email" name="wants_email" />
+            <span>
+              <strong>Also email me a copy</strong> when ready <span class="optional-tag">(optional)</span><br>
+              <span class="email-optin-sub">Your analysis loads on this page automatically. Email is a backup — and during early access, deliverability is limited to certain addresses. Check spam/junk if you opt in.</span>
+            </span>
+          </label>
+
+          <button type="submit" id="analyze-btn" class="btn btn-primary btn-large" disabled>
+            Analyze RFQ →
+          </button>
+          <p class="micro">
+            By clicking Analyze, you reaffirm: these documents are not ITAR-controlled, and you have read the
+            <a href="/terms.html" target="_blank">Terms</a>.
+          </p>
+        </form>
+
+        <!-- Loading state -->
+        <div id="loading" class="loading">
+          <div class="spinner"></div>
+          <p><strong>Analyzing...</strong></p>
+          <p class="loading-stage" id="loading-stage">Extracting document text...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results hidden"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-disclaimer">
+        QuoteScout does not price jobs, guarantee manufacturability, or replace engineering judgment.
+        It identifies areas requiring attention so teams can make informed decisions faster.
+        All flags require verification by qualified engineering personnel before pricing.
+      </p>
+      <nav class="footer-nav">
+        <a href="/terms.html">Terms of Service</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/nda.html">Mutual NDA</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Client-side OCR for scanned/image drawings. Tesseract.js runs as WASM in
+       the browser; ocr.js (ES module) exposes window.QuoteScoutOCR. Both load
+       before submit; if either is unavailable, upload proceeds without OCR. -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script type="module" src="./ocr.js"></script>
+
+  <script>
+    // Gate: must have NDA accepted (email in localStorage)
+    const userEmail = localStorage.getItem('qs_email');
+    const userCompany = localStorage.getItem('qs_company');
+    if (!userEmail) {
+      window.location.href = '/nda.html';
+    } else {
+      document.getElementById('user-email').textContent = userEmail;
+    }
+
+    let selectedFiles = []; // [{ file: File, label: string, id: string }]
+
+    // Best-effort, in-browser OCR of scanned/image drawings before upload.
+    // Mutates entries in place (sets entry.ocrText). Never throws; if Tesseract
+    // or ocr.js failed to load, or a scan won't transcribe, it skips silently
+    // and the upload proceeds with the image alone (the model still sees it).
+    async function ocrImageEntries(entries) {
+      const IMG = /\.(png|jpe?g|gif|webp|bmp|tiff?)$/i;
+      const imgs = (entries || []).filter(e => e && e.file && IMG.test(e.file.name));
+      if (!imgs.length) return;
+      if (typeof Tesseract === 'undefined' || !window.QuoteScoutOCR) return;
+      for (const entry of imgs) {
+        try {
+          if (typeof loadingStage !== 'undefined' && loadingStage) {
+            loadingStage.textContent = `Reading scanned drawing (${entry.file.name})…`;
+          }
+          const r = await window.QuoteScoutOCR.runOcr(entry.file, {});
+          if (r && r.text && r.wordCount >= 3) entry.ocrText = r.text;
+        } catch (e) {
+          console.warn('OCR skipped for', entry.file && entry.file.name, e && e.message);
+        }
+      }
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.getElementById('file-list');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const errorMsg = document.getElementById('error-msg');
+    const loading = document.getElementById('loading');
+    const loadingStage = document.getElementById('loading-stage');
+    const results = document.getElementById('results');
+    const emailBody = document.getElementById('email-body');
+    const notesCount = document.getElementById('notes-count');
+
+    // -----------------------------------------------------------------
+    // SHOP PROFILE — loaded from localStorage, included with submission.
+    // Anonymous, browser-only, no account required.
+    // -----------------------------------------------------------------
+    // MUST match profile.html's STORAGE_KEY. profile.html writes the profile
+    // under 'qs_profile'; this page reads it back here. If you ever rename the
+    // key, change it in BOTH files or the profile silently stops reaching the AI.
+    const SHOP_PROFILE_KEY = 'qs_profile';
+    // These field names MUST match what profile.html's readProfile() writes.
+    // The analyzer's system prompt has explicit rules that consume certs,
+    // material exclusions, lead time, backlog, shop rate, AVL, and envelope —
+    // so every one of these needs to survive the trip to /api/analyze.
+    const PROFILE_TEXT_FIELDS = [
+      'equipment', 'certs_other', 'certs_not_held', 'material_exclusions',
+      'avl_approved_vendor_list', 'capacity_envelope', 'typical_work',
+      'shop_rate_blended', 'lead_time_weeks', 'current_backlog_weeks'
+    ];
+    function loadShopProfile() {
+      try {
+        const raw = localStorage.getItem(SHOP_PROFILE_KEY);
+        if (!raw) return null;
+        const p = JSON.parse(raw);
+        if (!p || typeof p !== 'object') return null;
+        // Populated if any text field has content OR any certs are checked.
+        const hasText = PROFILE_TEXT_FIELDS.some(f => p[f] && String(p[f]).trim().length > 0);
+        const hasCerts = Array.isArray(p.certs_held) && p.certs_held.length > 0;
+        return (hasText || hasCerts) ? p : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function formatProfileForPrompt(p) {
+      if (!p) return '';
+      const sections = [];
+      if (p.equipment) sections.push(`Equipment & machines:\n${p.equipment}`);
+
+      // Certifications HELD (checkbox array + any free-text additions)
+      const certsHeld = [];
+      if (Array.isArray(p.certs_held)) certsHeld.push(...p.certs_held);
+      if (p.certs_other) certsHeld.push(p.certs_other);
+      if (certsHeld.length) sections.push(`Quality certifications & accreditations HELD: ${certsHeld.join(', ')}`);
+
+      // Certs explicitly NOT held — drives capability-gap (AMBER/RED) flags.
+      if (p.certs_not_held) sections.push(`Certifications/accreditations NOT held: ${p.certs_not_held}`);
+
+      // Hard material red lines — drives RECOMMEND_NO_BID on an excluded material.
+      if (p.material_exclusions) sections.push(`Material exclusions (HARD NO — do not quote work requiring these): ${p.material_exclusions}`);
+
+      if (p.avl_approved_vendor_list) sections.push(`Approved vendor list / outside services:\n${p.avl_approved_vendor_list}`);
+      if (p.capacity_envelope) sections.push(`Size envelope & capacity:\n${p.capacity_envelope}`);
+      if (p.typical_work) sections.push(`Typical work / commodities:\n${p.typical_work}`);
+      if (p.shop_rate_blended) sections.push(`Blended shop rate: ${p.shop_rate_blended}`);
+
+      // Lead time + backlog — drives the lead-time reality-check flag.
+      if (p.lead_time_weeks) sections.push(`Standard lead time (weeks): ${p.lead_time_weeks}`);
+      if (p.current_backlog_weeks) sections.push(`Current backlog (weeks): ${p.current_backlog_weeks}`);
+
+      return sections.join('\n\n');
+    }
+
+    // Render the profile banner on page load
+    (function initShopProfileBanner() {
+      const profile = loadShopProfile();
+      const loadedBanner = document.getElementById('shop-profile-banner');
+      const promptBanner = document.getElementById('shop-profile-prompt');
+      if (profile) {
+        if (loadedBanner) loadedBanner.classList.remove('hidden');
+        // Summarize what's populated so the estimator can confirm the profile took.
+        const populated = [];
+        if (profile.equipment) populated.push('equipment');
+        if ((Array.isArray(profile.certs_held) && profile.certs_held.length) || profile.certs_other) populated.push('certs');
+        if (profile.certs_not_held) populated.push('cert gaps');
+        if (profile.material_exclusions) populated.push('material red lines');
+        if (profile.avl_approved_vendor_list) populated.push('AVL');
+        if (profile.capacity_envelope) populated.push('capacity');
+        if (profile.typical_work) populated.push('typical work');
+        if (profile.shop_rate_blended) populated.push('shop rate');
+        if (profile.lead_time_weeks || profile.current_backlog_weeks) populated.push('lead time');
+        const subEl = document.getElementById('shop-profile-sub');
+        if (subEl && populated.length > 0) {
+          subEl.textContent = `Loaded: ${populated.join(', ')}. AI will do gap analysis instead of generic risk-listing.`;
+        }
+      } else {
+        if (promptBanner) promptBanner.classList.remove('hidden');
+      }
+    })();
+
+    // -----------------------------------------------------------------
+    // CLIENT-SIDE ITAR PRE-SCREEN.
+    // Runs in the browser BEFORE upload. Scans filename + pasted email body.
+    // If markers are found, refuses to submit and tells user the file
+    // never left their machine. (Full PDF-binary scanning is future work;
+    // this catches the obvious cases — defense filenames, pasted memos.)
+    // -----------------------------------------------------------------
+    const CLIENT_ITAR_PATTERNS = [
+      /\bITAR\s+controlled\b/i,
+      /\bITAR-controlled\b/i,
+      /\b22\s*CFR\s*1[23]\d\b/i,
+      /\bUSML\s+Category\b/i,
+      /\bU\.?S\.?\s+Munitions\s+List\b/i,
+      /\bEAR99\b/i,
+      /\bEAR\s+Category\s+[0-9]/i,
+      /\b15\s*CFR\s*7[3-7][0-9]\b/i,
+      /\bECCN\s+[0-9][A-Z][0-9]{3}/i,
+      /\bDDTC\b/i,
+      /\bNOFORN\b/i,
+      /\bDFARS\s+252\.204-70(12|19|20|21)\b/i,
+      /\bCMMC\s+Level\s+[23]\b/i,
+      /\bcontrolled\s+unclassified\s+information\b/i,
+      /\bCUI\/\/SP-/i,
+      /\bDoD\s+Distribution\s+[B-F]\b/i,
+      /\bMIL-SPEC\b.*\b(restricted|controlled|classified)\b/i,
+      /\bexport[- ]controlled\b/i,
+    ];
+    const CLIENT_ITAR_EXCLUSIONS = [
+      /\bnon[- ]ITAR\b/i,
+      /\bITAR[- ]free\b/i,
+      /\bnot\s+subject\s+to\s+ITAR\b/i,
+      /\bno\s+ITAR\b/i,
+      /\bexempt\s+from\s+ITAR\b/i,
+    ];
+    function clientScanItar(text, sourceName) {
+      if (!text || typeof text !== 'string') return [];
+      const findings = [];
+      const lines = text.split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (CLIENT_ITAR_EXCLUSIONS.some(p => p.test(line))) continue;
+        for (const pattern of CLIENT_ITAR_PATTERNS) {
+          const m = line.match(pattern);
+          if (m) {
+            findings.push({
+              source: sourceName,
+              line: i + 1,
+              match: m[0],
+              context: line.trim().slice(0, 220),
+            });
+            break; // one finding per line is enough
+          }
+        }
+      }
+      return findings;
+    }
+
+    // Live character counter for the notes textarea
+    function updateNotesCount() {
+      const n = (emailBody.value || '').length;
+      notesCount.textContent = n.toLocaleString();
+      notesCount.style.color = n > 28000 ? '#b91c1c' : (n > 25000 ? '#b45309' : '#777');
+      // Also re-evaluate the analyze button — either files OR notes are enough
+      refreshAnalyzeButton();
+    }
+    emailBody.addEventListener('input', updateNotesCount);
+
+    const MAX_FILES = 8;
+    const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+    const LABEL_OPTIONS = [
+      { value: '', text: '— Label (optional) —' },
+      { value: 'drawing', text: 'Drawing' },
+      { value: 'spec_sheet', text: 'Spec Sheet' },
+      { value: 'purchase_order', text: 'Purchase Order' },
+      { value: 'quality_clauses', text: 'Quality Clauses' },
+      { value: 'fai_form', text: 'FAI / PPAP Form' },
+      { value: 'other', text: 'Other' },
+    ];
+
+    function showError(msg) {
+      // Preserve line breaks for multi-line diagnostic messages
+      errorMsg.innerHTML = String(msg || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+      errorMsg.classList.remove('hidden');
+      errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function hideError() {
+      errorMsg.classList.add('hidden');
+    }
+
+    function totalBytes() {
+      return selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+    }
+
+    // Analyze button enables when EITHER files OR substantive notes are provided.
+    // ~30 chars of notes is the floor — prevents accidental empty / whitespace submits.
+    function refreshAnalyzeButton() {
+      const hasFiles = selectedFiles.length > 0;
+      const hasNotes = (emailBody.value || '').trim().length >= 30;
+      analyzeBtn.disabled = !(hasFiles || hasNotes);
+    }
+
+    function renderFileList() {
+      fileList.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        refreshAnalyzeButton();
+        return;
+      }
+      selectedFiles.forEach((entry) => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.innerHTML = `
+          <div class="file-row-info">
+            <div class="file-row-name">${entry.file.name}</div>
+            <div class="file-row-size">${(entry.file.size / 1024 / 1024).toFixed(2)} MB</div>
+          </div>
+          <select class="file-row-label" data-id="${entry.id}">
+            ${LABEL_OPTIONS.map(o => `<option value="${o.value}"${o.value === entry.label ? ' selected' : ''}>${o.text}</option>`).join('')}
+          </select>
+          <button type="button" class="file-row-remove" data-id="${entry.id}" aria-label="Remove">×</button>
+        `;
+        fileList.appendChild(row);
+      });
+      // Wire up label dropdowns
+      fileList.querySelectorAll('.file-row-label').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-id');
+          const entry = selectedFiles.find(f => f.id === id);
+          if (entry) entry.label = e.target.value;
+        });
+      });
+      // Wire up remove buttons
+      fileList.querySelectorAll('.file-row-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.target.getAttribute('data-id');
+          selectedFiles = selectedFiles.filter(f => f.id !== id);
+          renderFileList();
+        });
+      });
+      refreshAnalyzeButton();
+    }
+
+    const ALLOWED_EXTS = ['pdf','png','jpg','jpeg','gif','webp','dxf','dwg','step','stp','iges','igs','stl','obj','amf','3mf','sldprt','sldasm','ipt','iam','catpart','catproduct','prt','asm','f3d','x_t','x_b','sat','jt','nc','tap','gcode','csv','xlsx','xls','txt','doc','docx'];
+
+    function addFiles(fileArr) {
+      hideError();
+      const candidates = Array.from(fileArr);
+      for (const file of candidates) {
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        if (!ALLOWED_EXTS.includes(ext)) {
+          showError(`"${file.name}" — file type ".${ext}" not recognized. Accepted: PDF, images, CAD files (DXF/STEP/IGES/STL/SLDPRT/IPT/CATPart/DWG/etc.), G-code, BOMs.`);
+          continue;
+        }
+        if (selectedFiles.length >= MAX_FILES) {
+          showError(`Max ${MAX_FILES} files per package. Remove a file to add another.`);
+          break;
+        }
+        if (totalBytes() + file.size > MAX_TOTAL_BYTES) {
+          showError(`Adding "${file.name}" would exceed 50 MB total. Remove a file or compress.`);
+          break;
+        }
+        // Skip exact duplicates (same name + same size)
+        if (selectedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
+          continue;
+        }
+        selectedFiles.push({
+          file,
+          label: '',
+          id: `f${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        });
+      }
+      renderFileList();
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      addFiles(e.target.files);
+      // Reset so the same file can be re-selected later
+      e.target.value = '';
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+      }
+    });
+
+    let pollIntervalHandle = null;
+    let pollAttempts = 0;
+    const MAX_POLL_ATTEMPTS = 60; // 60 polls × 30s = 30 min max active polling
+    let currentJobId = null;
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // Allow EITHER files OR notes (refreshAnalyzeButton already enforces this)
+      const hasFiles = selectedFiles.length > 0;
+      const hasNotes = (emailBody.value || '').trim().length >= 30;
+      if (!hasFiles && !hasNotes) return;
+      hideError();
+
+      analyzeBtn.disabled = true;
+      analyzeBtn.classList.add('hidden');
+      loading.classList.add('shown');
+      results.classList.add('hidden');
+
+      // -------------------------------------------------------------
+      // CLIENT-SIDE ITAR PRE-SCREEN — refuse to upload if markers found.
+      // Scans: pasted email body + every selected filename.
+      // -------------------------------------------------------------
+      const notesText = (emailBody.value || '').trim();
+      const clientFindings = [];
+      if (notesText) {
+        clientFindings.push(...clientScanItar(notesText, 'pasted RFQ notes / email body'));
+      }
+      selectedFiles.forEach(f => {
+        const fname = f.file?.name || '';
+        clientFindings.push(...clientScanItar(fname, 'filename: ' + fname));
+      });
+      if (clientFindings.length > 0) {
+        loading.classList.remove('shown');
+        analyzeBtn.classList.remove('hidden');
+        analyzeBtn.disabled = false;
+        showItarRejection({
+          findings: clientFindings,
+          itar_detected: true,
+          client_side: true,
+        });
+        return;
+      }
+
+      // Show submission stage (very brief)
+      loadingStage.textContent = 'Submitting your RFQ to the AI...';
+
+      // Transcribe any scanned/image drawings in the browser first (best-effort;
+      // non-blocking on failure). The image still uploads for vision — this just
+      // adds a text layer for the ITAR pre-screen, standards detection, and as a
+      // cross-reference for the model.
+      await ocrImageEntries(selectedFiles);
+
+      try {
+        const formData = new FormData();
+        selectedFiles.forEach((entry) => {
+          formData.append('files', entry.file);
+          formData.append('labels', entry.label || '');
+          formData.append('ocr', entry.ocrText || '');
+        });
+        formData.append('email', userEmail);
+        formData.append('company_name', userCompany || '');
+        if (notesText) formData.append('email_body', notesText);
+        const wantsEmailCheckbox = document.getElementById('wants-email');
+        formData.append('wants_email', wantsEmailCheckbox && wantsEmailCheckbox.checked ? 'true' : 'false');
+
+        // Include shop profile if user has one set up. Sent as a single
+        // text blob; backend injects it into the system prompt context.
+        const shopProfile = loadShopProfile();
+        if (shopProfile) {
+          const profileText = formatProfileForPrompt(shopProfile);
+          if (profileText.length > 0) {
+            formData.append('shop_profile', profileText.slice(0, 20000)); // cap at 20KB
+          }
+        }
+
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!res.ok) {
+          const status = res.status;
+          let body = null;
+          try { body = await res.json(); } catch (e) {}
+
+          if (body && body.itar_detected && Array.isArray(body.findings) && body.findings.length > 0) {
+            showItarRejection(body);
+            return;
+          }
+
+          let msg;
+          if (body && body.error) {
+            msg = body.error;
+          } else if (status === 502 || status === 503) {
+            msg = '🔌 The AI submission service is briefly down. Wait 30 seconds and try again.';
+          } else if (status === 413) {
+            msg = '📦 The upload was larger than the platform allows (HTTP 413). Reduce file size or count.';
+          } else if (status >= 500) {
+            msg = 'Server error (HTTP ' + status + '). Check Vercel logs → /api/analyze for the actual error.';
+          } else {
+            msg = 'Submission failed (HTTP ' + status + '). ' + (body && typeof body === 'object' ? JSON.stringify(body).slice(0, 200) : '');
+          }
+          throw new Error(msg);
+        }
+
+        const data = await res.json();
+        if (!data.jobId) throw new Error('Server did not return a job ID.');
+
+        currentJobId = data.jobId;
+        startPolling({ ...data, wantsEmail: data.wantsEmail });
+
+      } catch (err) {
+        stopPolling();
+        loading.classList.remove('shown');
+        analyzeBtn.classList.remove('hidden');
+        analyzeBtn.disabled = false;
+        showError(err.message);
+      }
+    });
+
+    function startPolling(submitData) {
+      // Show the processing UI and persist jobId in the URL so the user can
+      // close the tab and come back later via bookmark. This is our primary
+      // continuity mechanism — email is a backup that may or may not arrive
+      // depending on whether the deployment has a verified sending domain.
+      pollAttempts = 0;
+      const submittedAt = submitData.submittedAtMs || Date.now();
+
+      // Update URL to include jobId without reloading
+      try {
+        const url = new URL(window.location);
+        url.searchParams.set('jobId', currentJobId);
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) { /* older browsers — silent */ }
+
+      function renderProcessingState(latestStatus) {
+        const elapsedMin = Math.floor((Date.now() - submittedAt) / 60000);
+        const elapsedSec = Math.floor((Date.now() - submittedAt) / 1000) % 60;
+        const elapsed = elapsedMin > 0 ? `${elapsedMin}m ${elapsedSec}s` : `${elapsedSec}s`;
+        const currentUrl = window.location.href;
+        const wantsEmail = !!submitData.wantsEmail;
+
+        loadingStage.innerHTML = `
+          <div style="text-align: center; max-width: 580px; margin: 0 auto;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 6px;">${latestStatus || 'Processing...'}</div>
+            <div style="font-size: 13px; color: #666; margin-bottom: 20px;">Elapsed: ${elapsed} · Typical: ~5 minutes · Max: 24 hours</div>
+
+            <div style="background: #f5f1e8; border: 1px solid #d8cdb5; border-radius: 6px; padding: 16px 18px; margin-bottom: 14px; text-align: left;">
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.05em; color: #7d3a30; margin-bottom: 8px;">YOUR ANALYSIS WILL LOAD HERE</div>
+              <div style="font-size: 14px; line-height: 1.5; color: #1a1816;">
+                This page auto-updates the moment your analysis is ready. No refresh needed. Most users see results in under 5 minutes.
+              </div>
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #c8b896; font-size: 13px; color: #444;">
+                <strong>Need to step away?</strong> Bookmark this page or copy the URL — come back any time, even days later.
+                <div style="display: flex; gap: 8px; margin-top: 10px; align-items: center;">
+                  <input type="text" readonly value="${currentUrl}" style="flex: 1; padding: 6px 10px; font-family: 'SF Mono', Menlo, monospace; font-size: 11px; border: 1px solid #c8b896; border-radius: 4px; background: white; color: #444;" onclick="this.select()" id="resume-url-input" />
+                  <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('resume-url-input').value).then(()=>{this.textContent='✓ Copied';setTimeout(()=>this.textContent='Copy',2000)})" style="padding: 6px 12px; font-size: 12px; background: #1a1816; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            ${wantsEmail ? `<div style="font-size: 12px; color: #888; font-style: italic;">✉️ Email backup requested. If it lands in spam/junk, this page is your reliable source.</div>` : ''}
+          </div>
+        `;
+      }
+
+      renderProcessingState(submitData.resumed ? 'Resuming your earlier analysis...' : 'Submitted. Waiting for AI to begin...');
+
+      async function pollOnce() {
+        pollAttempts++;
+        try {
+          const r = await fetch('/api/job-status?jobId=' + encodeURIComponent(currentJobId));
+          if (!r.ok) {
+            console.warn('Poll returned non-200:', r.status);
+            return;
+          }
+          const result = await r.json();
+
+          if (result.status === 'in_progress' || result.status === 'queued') {
+            renderProcessingState('AI is analyzing your RFQ...');
+            return;
+          }
+
+          if (result.status === 'complete') {
+            stopPolling();
+            const analysis = result.analysis || {};
+            displayResults({
+              verdict: analysis.verdict || null,
+              verdictReason: analysis.verdictReason || '',
+              summary: analysis.summary || '',
+              clarifications: analysis.clarifications || [],
+              flags: analysis.flags || [],
+              flagCounts: analysis.flagCounts || {},
+              analysisId: result.analysisId,
+              fileDeletedAt: result.completedAt || new Date().toISOString(),
+              emailSentAt: result.emailSentAt || null,
+              wantsEmail: !!result.wantsEmail,
+              resumeUrl: window.location.href,
+            });
+            return;
+          }
+
+          if (result.status === 'failed') {
+            stopPolling();
+            loading.classList.remove('shown');
+            analyzeBtn.classList.remove('hidden');
+            analyzeBtn.disabled = false;
+            showError('⚠️ Analysis failed.\n\n' + (result.error || 'Unknown error.'));
+            return;
+          }
+
+          if (result.status === 'not_found') {
+            stopPolling();
+            loading.classList.remove('shown');
+            document.getElementById('upload-form').classList.remove('hidden');
+            analyzeBtn.classList.remove('hidden');
+            analyzeBtn.disabled = false;
+            showError('We couldn\'t find a job with this ID. It may have been cleared after 30+ days. Please re-submit.');
+            // Clear the stale jobId from URL
+            try {
+              const url = new URL(window.location);
+              url.searchParams.delete('jobId');
+              window.history.replaceState({}, '', url.toString());
+            } catch (e) {}
+            return;
+          }
+        } catch (e) {
+          console.warn('Poll error (will retry):', e.message);
+        }
+
+        if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+          stopPolling();
+          const currentUrl = window.location.href;
+          loadingStage.innerHTML = `
+            <div style="text-align: center; max-width: 560px; margin: 0 auto;">
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">⏱️ Still processing on Anthropic's side.</div>
+              <div style="font-size: 13px; color: #555; line-height: 1.55;">
+                Your analysis is still in queue at the AI service. Most complete in 5–30 minutes, but rare cases take up to 24 hours.
+                <br><br><strong>Come back to this URL any time</strong> to check status:
+                <div style="margin-top: 10px; padding: 8px 10px; font-family: monospace; font-size: 11px; background: #f5f1e8; border: 1px solid #d8cdb5; border-radius: 4px; word-break: break-all;">${currentUrl}</div>
+                <br>The page polled 30 minutes without resolution and stopped auto-refreshing to save your battery. Refresh the page to resume polling.
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // First poll after 5s (Anthropic batches start fast), then every 30s
+      setTimeout(pollOnce, submitData.resumed ? 500 : 5000);
+      pollIntervalHandle = setInterval(pollOnce, 30000);
+    }
+
+    function stopPolling() {
+      if (pollIntervalHandle) {
+        clearInterval(pollIntervalHandle);
+        pollIntervalHandle = null;
+      }
+    }
+
+    // =================================================================
+    // RESUME MODE: detect ?jobId=XXX in URL on page load.
+    // If present, hide the upload form and resume polling that job.
+    // This is the user's safety net for "I closed the tab" / bookmarks.
+    // =================================================================
+    (function checkResume() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const resumeJobId = urlParams.get('jobId');
+        if (!resumeJobId) return;
+
+        // Hide the upload form, show the loading state
+        const uploadForm = document.getElementById('upload-form');
+        if (uploadForm) uploadForm.classList.add('hidden');
+        results.classList.add('hidden');
+        loading.classList.add('shown');
+
+        currentJobId = resumeJobId;
+        startPolling({
+          jobId: resumeJobId,
+          resumed: true,
+          submittedAtMs: Date.now(), // we don't know real submit time on resume; show "elapsed since now"
+          fileCount: 0,
+        });
+      } catch (e) {
+        console.warn('Resume check failed:', e.message);
+      }
+    })();
+
+    function showItarRejection(payload) {
+      loading.classList.remove('shown');
+      analyzeBtn.classList.remove('hidden');
+      analyzeBtn.disabled = false;
+
+      const escape = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      // Client-side rejection has a flat findings array of {source, line, match, context}.
+      // Server-side rejection has findings grouped per-file with a markers array.
+      const isClientSide = !!payload.client_side;
+
+      let blocks;
+      if (isClientSide) {
+        blocks = payload.findings.map(f => `
+          <div style="border-left: 3px solid #b91c1c; padding: 8px 12px; margin: 6px 0; background: white;">
+            <div style="font-size: 11px; font-weight: 600; color: #b91c1c; letter-spacing: 0.05em;">${escape(f.source)} · LINE ${f.line}</div>
+            <div style="font-family: monospace; font-size: 12px; color: #333; margin-top: 4px; word-break: break-word;">"${escape(f.context)}"</div>
+            <div style="font-size: 11px; color: #777; margin-top: 4px;">Matched: <code>${escape(f.match)}</code></div>
+          </div>
+        `).join('');
+      } else {
+        blocks = payload.findings.map(f => {
+          const markerRows = (f.markers || []).map(m => `
+            <div style="border-left: 3px solid #b91c1c; padding: 8px 12px; margin: 6px 0; background: white;">
+              <div style="font-size: 11px; font-weight: 600; color: #b91c1c; letter-spacing: 0.05em;">${escape(m.marker.toUpperCase())} · LINE ${m.line}</div>
+              <div style="font-family: monospace; font-size: 12px; color: #333; margin-top: 4px; word-break: break-word;">"${escape(m.context)}"</div>
+              <div style="font-size: 11px; color: #777; margin-top: 4px;">Matched: <code>${escape(m.matched)}</code></div>
+            </div>
+          `).join('');
+          return `<div style="margin: 12px 0;"><strong>📄 ${escape(f.file)}</strong>${markerRows}</div>`;
+        }).join('');
+      }
+
+      const headline = isClientSide
+        ? '🔒 Export-control markers detected in your browser — nothing was uploaded.'
+        : '⚠️ Export-control markers detected — analysis blocked.';
+      const trust = isClientSide
+        ? '<p style="margin: 8px 0; padding: 10px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 14px; color: #166534;"><strong>Privacy guarantee:</strong> This scan ran entirely on your computer. No file content, no filenames, and no pasted text was sent to our server. Nothing left your browser.</p>'
+        : `<p style="margin: 8px 0;">${escape(payload.error || '')}</p><p style="margin: 8px 0; font-size: 14px;">${escape(payload.guidance || '')}</p>`;
+
+      errorMsg.innerHTML = `
+        <strong>${headline}</strong>
+        ${trust}
+        <p style="margin: 8px 0;">QuoteScout is for non-ITAR, non-EAR-controlled commercial work only. ITAR-cleared infrastructure is planned for Phase 4.</p>
+        <div style="margin-top: 12px;">${blocks}</div>
+        <p style="margin: 12px 0 0; font-size: 13px;">
+          <strong>False positive?</strong> If the matched text is a part number, customer name, or a "non-ITAR" disclaimer that the scanner misread, edit/redact the file or the email body and re-upload.
+        </p>
+      `;
+      errorMsg.classList.remove('hidden');
+      errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function displayResults(data) {
+      loading.classList.remove('shown');
+      results.classList.remove('hidden');
+
+      const flags = data.flags || [];
+      const counts = data.flagCounts || { red: 0, amber: 0, yellow: 0, purple: 0 };
+      const total = (counts.red || 0) + (counts.amber || 0) + (counts.yellow || 0) + (counts.purple || 0);
+      const clarifications = Array.isArray(data.clarifications) ? data.clarifications : [];
+
+      // -----------------------------------------------------------------
+      // Verdict card — the bottom-line read in 2 seconds.
+      // -----------------------------------------------------------------
+      const VERDICT_META = {
+        READY_TO_QUOTE: { label: 'Ready to quote', bg: '#dcfce7', border: '#86efac', fg: '#166534', icon: '✓' },
+        QUOTE_WITH_ASSUMPTIONS: { label: 'Quote with assumptions', bg: '#fef3c7', border: '#fcd34d', fg: '#92400e', icon: '⚠' },
+        CLARIFICATIONS_REQUIRED: { label: 'Clarifications required', bg: '#fef3c7', border: '#fcd34d', fg: '#92400e', icon: '📞' },
+        RECOMMEND_NO_BID: { label: 'Recommend no-bid', bg: '#fee2e2', border: '#fca5a5', fg: '#991b1b', icon: '✕' },
+      };
+      const v = VERDICT_META[data.verdict] || null;
+      const verdictHtml = v ? `
+        <div style="background: ${v.bg}; border: 1px solid ${v.border}; border-radius: 8px; padding: 18px 22px; margin: 0 0 16px;">
+          <div style="font-size: 11px; letter-spacing: 0.1em; font-weight: 700; color: ${v.fg}; text-transform: uppercase; opacity: 0.85;">${v.icon} Verdict</div>
+          <div style="font-size: 22px; font-weight: 600; color: ${v.fg}; margin-top: 4px; line-height: 1.25;">${v.label}</div>
+          ${data.verdictReason ? `<div style="font-size: 14px; color: ${v.fg}; margin-top: 8px; line-height: 1.5; opacity: 0.92;">${escapeHtml(data.verdictReason)}</div>` : ''}
+        </div>
+      ` : '';
+
+      // -----------------------------------------------------------------
+      // Executive summary block
+      // -----------------------------------------------------------------
+      const summaryHtml = data.summary ? `
+        <div style="background: #f5f1e8; border-left: 4px solid #7d3a30; padding: 14px 18px; margin: 0 0 16px; border-radius: 0 6px 6px 0;">
+          <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #7d3a30; text-transform: uppercase; margin-bottom: 6px;">Executive Summary</div>
+          <div style="font-size: 14px; line-height: 1.55; color: #1a1816;">${escapeHtml(data.summary)}</div>
+        </div>
+      ` : '';
+
+      // -----------------------------------------------------------------
+      // Customer clarifications — the actionable phone-ready checklist.
+      // -----------------------------------------------------------------
+      const PRIORITY_META = {
+        BLOCKING: { label: 'BLOCKING', color: '#b91c1c', bg: '#fef2f2' },
+        IMPORTANT: { label: 'IMPORTANT', color: '#b45309', bg: '#fffbeb' },
+        NICE_TO_HAVE: { label: 'NICE TO HAVE', color: '#555', bg: '#fafafa' },
+      };
+      let clarificationsHtml = '';
+      let copyChecklistText = '';
+      if (clarifications.length > 0) {
+        const sortedClars = [...clarifications].sort((a, b) => {
+          const rank = { BLOCKING: 0, IMPORTANT: 1, NICE_TO_HAVE: 2 };
+          return (rank[a.priority] ?? 3) - (rank[b.priority] ?? 3);
+        });
+        // Pre-build the copy-checklist text once, captured in closure
+        // (replaces the fragile JSON-in-onclick pattern that was breaking
+        // when AI clarification text contained quotes).
+        copyChecklistText = sortedClars.map((c, i) =>
+          `${i + 1}. ${c.question}${c.priority ? ' [' + c.priority.replace('_', ' ') + ']' : ''}`
+        ).join('\n');
+        clarificationsHtml = `
+          <div style="background: white; border: 1px solid #d8cdb5; border-radius: 8px; padding: 18px 22px; margin: 0 0 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;">
+              <div>
+                <div style="font-size: 11px; letter-spacing: 0.1em; font-weight: 700; color: #1a1816; text-transform: uppercase;">📞 Ask the customer</div>
+                <div style="font-size: 13px; color: #666; margin-top: 4px;">${sortedClars.length} ${sortedClars.length === 1 ? 'question' : 'questions'} to resolve before pricing</div>
+              </div>
+              <button type="button" id="copy-checklist-btn" style="padding: 6px 12px; font-size: 12px; background: #1a1816; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">📋 Copy checklist</button>
+            </div>
+            <ol style="margin: 0; padding-left: 22px; list-style-position: outside;">
+              ${sortedClars.map(c => {
+                const p = PRIORITY_META[c.priority] || PRIORITY_META.NICE_TO_HAVE;
+                return `
+                <li style="margin-bottom: 12px; padding-left: 4px; line-height: 1.5;">
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline;">
+                    <span style="font-size: 14px; color: #1a1816; font-weight: 500; flex: 1; min-width: 0;">${escapeHtml(c.question || '')}</span>
+                    <span style="font-size: 9px; letter-spacing: 0.08em; color: ${p.color}; background: ${p.bg}; padding: 2px 7px; border-radius: 3px; font-weight: 700; white-space: nowrap;">${p.label}</span>
+                  </div>
+                  ${c.why ? `<div style="font-size: 12px; color: #666; margin-top: 4px; font-style: italic;">${escapeHtml(c.why)}</div>` : ''}
+                </li>`;
+              }).join('')}
+            </ol>
+          </div>
+        `;
+      }
+
+      // -----------------------------------------------------------------
+      // URL / email delivery banner (same as before)
+      // -----------------------------------------------------------------
+      const wantsEmail = !!data.wantsEmail;
+      const emailOk = !!data.emailSentAt;
+      const resumeUrl = data.resumeUrl || window.location.href;
+      const emailSubBanner = wantsEmail
+        ? (emailOk
+            ? `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #bae6fd; font-size: 12px; color: #555;">✉️ Also emailed to <strong>${userEmail}</strong>. <strong>Check spam/junk</strong> if you don't see it.</div>`
+            : `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fde68a; font-size: 12px; color: #555;">⚠️ Email send failed (sandbox or provider restriction). This URL is your record.</div>`)
+        : '';
+      const deliveryHtml = `
+        <div id="top" data-print-hide="true" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 14px 16px; margin: 0 0 16px;">
+          <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.05em; color: #075985; margin-bottom: 6px;">🔖 SAVE THIS URL</div>
+          <div style="font-size: 13px; line-height: 1.5; color: #333;">Bookmark or copy this URL to revisit your analysis any time — accessible for 30 days.</div>
+          <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+            <input type="text" readonly value="${resumeUrl}" style="flex: 1; padding: 6px 10px; font-family: 'SF Mono', Menlo, monospace; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; background: white; color: #444;" onclick="this.select()" id="result-url-input" />
+            <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('result-url-input').value).then(()=>{this.textContent='✓ Copied';setTimeout(()=>this.textContent='Copy URL',2000)})" style="padding: 6px 12px; font-size: 12px; background: #1a1816; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">Copy URL</button>
+          </div>
+          ${emailSubBanner}
+        </div>
+      `;
+
+      // -----------------------------------------------------------------
+      // Jump-nav strip — clickable shortcuts to each severity section.
+      // Replaces the flat "Findings (N)" header so the user can navigate
+      // a 20+ flag report instead of endlessly scrolling.
+      // -----------------------------------------------------------------
+      // Severity color palette — used by jump-nav AND section headers AND card borders.
+      const SEV_COLORS = {
+        RED: '#b91c1c',
+        AMBER: '#b45309',
+        YELLOW: '#a16207',
+        PURPLE: '#7c3aed',
+      };
+      const SEV_MEANINGS = {
+        RED: 'Must resolve before quoting',
+        AMBER: 'Capability check needed',
+        YELLOW: 'Hidden costs · easy to absorb if missed',
+        PURPLE: 'Verify before action · AI confidence below 70%',
+      };
+      const SEV_DOTS = {
+        RED: '🔴', AMBER: '🟠', YELLOW: '🟡', PURPLE: '🟣',
+      };
+
+      const jumpButton = (sev, count, label) => {
+        if (count === 0) return '';
+        const color = SEV_COLORS[sev];
+        return `<a href="#sev-${sev}" data-target="sev-${sev}" class="sev-jump-link" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; background: white; border: 1px solid ${color}; color: ${color}; border-radius: 14px; text-decoration: none; transition: background 0.12s;">
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${color};"></span>
+          <strong>${count}</strong> ${label}
+        </a>`;
+      };
+
+      let html = verdictHtml + summaryHtml + clarificationsHtml + deliveryHtml + `
+        <div style="margin: 22px 0 16px; padding: 14px 18px; background: #fafaf6; border: 1px solid #e5dfd0; border-radius: 8px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #1a1816; text-transform: uppercase; margin-right: 6px;">
+              Findings (${total}) &nbsp;·&nbsp; Jump to:
+            </div>
+            ${jumpButton('RED', counts.red || 0, 'RED')}
+            ${jumpButton('AMBER', counts.amber || 0, 'AMBER')}
+            ${jumpButton('YELLOW', counts.yellow || 0, 'YELLOW')}
+            ${jumpButton('PURPLE', counts.purple || 0, 'PURPLE')}
+          </div>
+        </div>
+      `;
+
+      // -----------------------------------------------------------------
+      // Flag cards — action-first layout. The action statement is the
+      // PRIMARY visual element; description is secondary supporting prose.
+      // -----------------------------------------------------------------
+
+      const bySeverity = { RED: [], AMBER: [], YELLOW: [], PURPLE: [] };
+      flags.forEach(f => {
+        const sev = (f.severity || 'PURPLE').toUpperCase();
+        if (bySeverity[sev]) bySeverity[sev].push(f);
+        else bySeverity.PURPLE.push(f);
+      });
+
+      ['RED', 'AMBER', 'YELLOW', 'PURPLE'].forEach(sev => {
+        if (bySeverity[sev].length === 0) return;
+        const color = SEV_COLORS[sev];
+        // Proper anchored section header — bigger, with meaning subtitle
+        // and a colored left rule. Real wayfinding for long reports.
+        html += `
+          <h3 id="sev-${sev}" style="scroll-margin-top: 80px; margin: 34px 0 14px; padding: 10px 0 10px 14px; font-size: 17px; font-weight: 700; color: ${color}; border-left: 4px solid ${color}; background: ${color}0d;">
+            <span style="margin-right: 6px;">${SEV_DOTS[sev]}</span>${sev} &middot; ${bySeverity[sev].length} ${bySeverity[sev].length === 1 ? 'finding' : 'findings'}
+            <div style="font-size: 12px; font-weight: 500; color: #555; margin-top: 2px; letter-spacing: 0;">${SEV_MEANINGS[sev]}</div>
+          </h3>
+        `;
+        bySeverity[sev].forEach(f => {
+          const confNum = (typeof f.confidence === 'number') ? Math.max(0, Math.min(100, f.confidence)) : null;
+          const confBar = confNum !== null
+            ? `<span style="display: inline-flex; align-items: center; gap: 5px; color: #888;">CONFIDENCE
+                 <span style="display: inline-block; width: 50px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; vertical-align: middle;">
+                   <span style="display: block; width: ${confNum}%; height: 100%; background: ${color};"></span>
+                 </span>
+                 <span style="color: #555; font-weight: 700;">${confNum}%</span>
+               </span>`
+            : '<span style="color: #888;">CONFIDENCE —</span>';
+          html += `
+            <div style="background: white; border: 1px solid #e5dfd0; border-left: 4px solid ${color}; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px;">
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; color: ${color}; margin-bottom: 8px;">
+                <span>${escapeHtml((f.category || 'risk').toUpperCase())}</span>
+                <span style="color: #ccc;">·</span>
+                ${confBar}
+                ${f.impact ? `<span style="margin-left: auto; background: #f0e9d6; color: #5a4520; padding: 2px 8px; border-radius: 3px; font-size: 10px; letter-spacing: 0.04em;">${escapeHtml(f.impact)}</span>` : ''}
+              </div>
+              <div style="font-size: 16px; font-weight: 600; color: #1a1816; line-height: 1.35; margin-bottom: 8px;">${escapeHtml(f.title || 'Risk identified')}</div>
+              ${f.recommendedAction ? `
+                <div style="background: #fafaf6; border-left: 3px solid ${color}; padding: 10px 12px; border-radius: 0 4px 4px 0; margin: 8px 0;">
+                  <div style="font-size: 10px; letter-spacing: 0.08em; font-weight: 700; color: ${color}; text-transform: uppercase; margin-bottom: 3px;">Action</div>
+                  <div style="font-size: 14px; color: #1a1816; line-height: 1.45;">${escapeHtml(f.recommendedAction)}</div>
+                </div>
+              ` : ''}
+              ${f.description ? `<div style="font-size: 13px; color: #555; line-height: 1.55; margin-top: 8px;">${escapeHtml(f.description)}</div>` : ''}
+              ${f.estimatedCostRange ? `<div style="font-size: 13px; margin-top: 8px; padding: 6px 10px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; color: #065f46;"><strong>💰 Cost impact:</strong> ${escapeHtml(f.estimatedCostRange)}</div>` : ''}
+              ${f.location ? `<div style="font-size: 11px; color: #888; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee;">📍 ${escapeHtml(f.location)}</div>` : ''}
+            </div>
+          `;
+        });
+      });
+
+      // -----------------------------------------------------------------
+      // Dimensional calculations (kept as-is, rare in practice)
+      // -----------------------------------------------------------------
+      if (data.dimensions && data.dimensions.length > 0) {
+        html += `<div style="font-size: 11px; letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; color: #a16207; margin: 22px 0 10px;">Dimensional compensation</div>`;
+        data.dimensions.forEach(d => {
+          html += `
+            <div style="background: white; border: 1px solid #e5dfd0; border-left: 4px solid #a16207; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px;">
+              <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">${escapeHtml(d.feature || 'Feature')}</div>
+              <div style="font-size: 13px; color: #555; line-height: 1.6;">
+                <strong>Coating:</strong> ${escapeHtml(d.coating || 'n/a')}<br>
+                <strong>Pre-coat dimension:</strong> ${escapeHtml(d.preCoatValue || 'n/a')}<br>
+                ${escapeHtml(d.calculation || '')}
+              </div>
+              <div style="background: #fafaf6; border-left: 3px solid #a16207; padding: 8px 10px; margin-top: 10px; font-size: 13px;">
+                <strong style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #a16207;">Action: </strong>
+                Verify with plating vendor before machining.
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // -----------------------------------------------------------------
+      // Footer: deletion confirmation, disclaimer, outcome prompt, actions
+      // -----------------------------------------------------------------
+      html += `
+        <div style="margin-top: 24px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 12px; color: #166534;">
+          ✓ Your file was processed and deleted at ${new Date(data.fileDeletedAt || Date.now()).toLocaleString()} — no copy retained.
+        </div>
+        <div class="disclaimer-banner" style="margin-top: 12px;">
+          <strong>Required disclaimer:</strong> All flags require verification by qualified engineering personnel before pricing. QuoteScout does not approve, price, or guarantee manufacturability of any job.
+        </div>
+      `;
+
+      if (data.analysisId) {
+        html += `
+        <div id="outcome-prompt-after-results" class="outcome-prompt">
+          <h3>How did this RFQ turn out?</h3>
+          <p>One radio button is fine. This data loop is what makes QuoteScout sharper for the next shop — and your shop, the next time around.</p>
+          <a href="/outcome.html?id=${encodeURIComponent(data.analysisId)}" class="btn btn-primary">Track outcome →</a>
+        </div>
+        `;
+      }
+
+      html += `
+        <div style="text-align: center; margin: 28px 0 8px;">
+          <a href="#top" id="back-to-top" style="display: inline-block; padding: 6px 14px; font-size: 12px; color: #666; text-decoration: none; border: 1px solid #d8cdb5; border-radius: 14px; background: white;">↑ Back to verdict</a>
+        </div>
+        <div style="margin-top: 8px; text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center;">
+          <button onclick="window.print()" class="btn btn-primary">🖨 Print / Save as PDF</button>
+          <a href="/app.html" class="btn btn-secondary">Analyze Another RFQ</a>
+          <button id="export-btn" class="btn btn-secondary btn-small" title="Export to JSON, CSV, or any custom format you can describe">⬇ Export…</button>
+        </div>
+        <p class="micro" style="text-align: center; color: #888; margin-top: 8px; font-size: 11px;">
+          Export options include JSON (for ERP archival), CSV (one flag per row), or a custom AI-generated format (JobBOSS-style XML, Paperless Parts import, plain-text customer email, anything you describe).
+        </p>
+      `;
+
+      results.innerHTML = html;
+      window.scrollTo({ top: results.offsetTop - 80, behavior: 'smooth' });
+
+      // Wire up the Copy Checklist button (replaces the fragile inline
+      // onclick that was leaking JSON into the rendered output when AI
+      // clarification text contained quote characters).
+      const copyChecklistBtn = document.getElementById('copy-checklist-btn');
+      if (copyChecklistBtn && copyChecklistText) {
+        copyChecklistBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(copyChecklistText).then(() => {
+            copyChecklistBtn.textContent = '✓ Copied checklist';
+            setTimeout(() => { copyChecklistBtn.textContent = '📋 Copy checklist'; }, 2000);
+          }).catch(() => {
+            // Fallback for browsers/contexts that block clipboard API
+            copyChecklistBtn.textContent = '⚠ Copy blocked — select & copy manually';
+            setTimeout(() => { copyChecklistBtn.textContent = '📋 Copy checklist'; }, 3500);
+          });
+        });
+      }
+
+      // Wire up the severity jump-nav (smooth scroll to anchored sections)
+      document.querySelectorAll('.sev-jump-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetId = link.getAttribute('data-target');
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+
+      // Wire up the back-to-top button
+      const backToTop = document.getElementById('back-to-top');
+      if (backToTop) {
+        backToTop.addEventListener('click', (e) => {
+          e.preventDefault();
+          results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+
+      // Wire up the export menu (modal)
+      const exportBtn = document.getElementById('export-btn');
+      if (exportBtn) {
+        exportBtn.addEventListener('click', () => openExportModal(data));
+      }
+    }
+
+    // ===================================================================
+    // EXPORT MODAL — "agent disguised as SaaS" export flow.
+    // Quick options: JSON (client-side), CSV (client-side).
+    // Custom: AI agent (Haiku) transforms the analysis into any format
+    // the user describes.
+    // ===================================================================
+    function openExportModal(data) {
+      // Remove any existing modal
+      const existing = document.getElementById('export-modal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'export-modal';
+      modal.className = 'qs-modal-backdrop';
+      modal.innerHTML = `
+        <div class="qs-modal">
+          <button class="qs-modal-close" aria-label="Close" type="button">✕</button>
+          <h2 style="margin: 0 0 4px;">Export this analysis</h2>
+          <p class="micro" style="color: #666; margin: 0 0 18px;">Choose a structured format below, or describe a custom format and our AI will generate it.</p>
+
+          <div class="qs-export-quick">
+            <button type="button" class="qs-export-btn" data-format="json">
+              <div class="qs-export-btn-title">📄 JSON</div>
+              <div class="qs-export-btn-sub">Full structured data. For ERP archival.</div>
+            </button>
+            <button type="button" class="qs-export-btn" data-format="csv">
+              <div class="qs-export-btn-title">📊 CSV</div>
+              <div class="qs-export-btn-sub">One row per flag. Opens in Excel.</div>
+            </button>
+            <button type="button" class="qs-export-btn" data-format="markdown">
+              <div class="qs-export-btn-title">📝 Markdown</div>
+              <div class="qs-export-btn-sub">Human-readable. Paste into Slack or docs.</div>
+            </button>
+          </div>
+
+          <div style="margin: 18px 0 10px; padding-top: 14px; border-top: 1px dashed #d8cdb5;">
+            <label for="custom-format" style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px;">Custom format</label>
+            <p class="micro" style="color: #666; margin: 0 0 8px;">Describe what you want. The AI will transform the analysis JSON into it.</p>
+
+            <div class="qs-export-chips">
+              <button type="button" class="qs-chip" data-prompt="Estimator pre-fill worksheet: suggested routing, outside-service vendor RFQ list, likely NRE charges, and material/stock notes. No prices or times.">📋 Estimator pre-fill</button>
+              <button type="button" class="qs-chip" data-prompt="Generate as JobBOSS Manufacturing import XML, with one Operation node per flag. Include OperationCode, Description, Severity, Confidence, and Action fields. Add a comment at the top noting this is a template format.">JobBOSS XML</button>
+              <button type="button" class="qs-chip" data-prompt="Generate as Paperless Parts compatible CSV with these columns: Risk_ID, Severity, Category, Title, Action, Confidence, Cost_Impact, Location. One row per flag.">Paperless Parts CSV</button>
+              <button type="button" class="qs-chip" data-prompt="Plain-text email to the customer summarizing the verdict and the BLOCKING customer clarifications. Professional, non-prescriptive tone. No prices.">Email to customer</button>
+              <button type="button" class="qs-chip" data-prompt="Engineering review brief in markdown. Group flags by category. Lead with the verdict. End with the customer clarifications checklist.">Engineering brief</button>
+              <button type="button" class="qs-chip" data-prompt="MIE Trak Pro import-ready CSV with: PartNumber, RiskID, Severity, Title, RecommendedAction, EstimatedCostImpact. Add a top-line summary as a comment.">MIE Trak CSV</button>
+              <button type="button" class="qs-chip" data-prompt="Plain-text routing-card note for the floor: list each AMBER and RED flag as a single line item with severity prefix. No metadata, no JSON, just lines.">Floor router note</button>
+            </div>
+
+            <textarea id="custom-format" rows="3" maxlength="500" placeholder="e.g. 'JobBOSS XML', 'Paperless Parts CSV', 'plain-text email to customer', 'Epicor import template', or anything else..."></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <span class="micro" style="color: #888;"><span id="format-char-count">0</span> / 500 characters</span>
+              <button type="button" class="btn btn-primary" id="generate-custom-btn">✨ Generate</button>
+            </div>
+          </div>
+
+          <div id="export-result" class="qs-export-result hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <strong style="font-size: 13px;" id="export-result-title">Generated output</strong>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-secondary btn-small" id="copy-result-btn">📋 Copy</button>
+                <button type="button" class="btn btn-secondary btn-small" id="download-result-btn">⬇ Download</button>
+              </div>
+            </div>
+            <textarea id="export-result-text" readonly rows="14"></textarea>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // Close handlers
+      modal.querySelector('.qs-modal-close').addEventListener('click', () => modal.remove());
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+      // Quick-format buttons (client-side)
+      modal.querySelectorAll('.qs-export-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const fmt = btn.dataset.format;
+          const { content, filename, label } = generateClientSideExport(data, fmt);
+          showExportResult(content, filename, label);
+        });
+      });
+
+      // Chip buttons → autofill textarea
+      const customTextarea = modal.querySelector('#custom-format');
+      const charCountEl = modal.querySelector('#format-char-count');
+      modal.querySelectorAll('.qs-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          customTextarea.value = chip.dataset.prompt;
+          charCountEl.textContent = customTextarea.value.length;
+          customTextarea.focus();
+        });
+      });
+
+      customTextarea.addEventListener('input', () => {
+        charCountEl.textContent = customTextarea.value.length;
+      });
+
+      // Generate via AI
+      const generateBtn = modal.querySelector('#generate-custom-btn');
+      generateBtn.addEventListener('click', async () => {
+        const targetFormat = customTextarea.value.trim();
+        if (targetFormat.length < 5) {
+          alert('Describe the target format in at least a few words.');
+          return;
+        }
+        const jobId = new URLSearchParams(window.location.search).get('jobId') || data.jobId || currentJobId;
+        if (!jobId) {
+          alert('Cannot find job ID. Try refreshing the page.');
+          return;
+        }
+        generateBtn.disabled = true;
+        generateBtn.textContent = '⏳ Generating...';
+        try {
+          const res = await fetch('/api/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId, target_format: targetFormat }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(body.error || `Export failed (HTTP ${res.status})`);
+          }
+          const filename = `quotescout-${(data.analysisId || 'export')}-custom-${Date.now()}.txt`;
+          showExportResult(body.generated, filename, `Custom format · ${targetFormat.slice(0, 60)}${targetFormat.length > 60 ? '…' : ''}`);
+        } catch (err) {
+          alert('Generate failed: ' + err.message);
+        } finally {
+          generateBtn.disabled = false;
+          generateBtn.textContent = '✨ Generate';
+        }
+      });
+
+      function showExportResult(content, filename, label) {
+        const resultBox = modal.querySelector('#export-result');
+        const textarea = modal.querySelector('#export-result-text');
+        const title = modal.querySelector('#export-result-title');
+        title.textContent = label || 'Generated output';
+        textarea.value = content;
+        resultBox.classList.remove('hidden');
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        modal.querySelector('#copy-result-btn').onclick = () => {
+          navigator.clipboard.writeText(content).then(() => {
+            const btn = modal.querySelector('#copy-result-btn');
+            btn.textContent = '✓ Copied';
+            setTimeout(() => btn.textContent = '📋 Copy', 2000);
+          });
+        };
+        modal.querySelector('#download-result-btn').onclick = () => {
+          const blob = new Blob([content], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
+      }
+    }
+
+    // ===================================================================
+    // Client-side export generators (no AI call needed for known formats)
+    // ===================================================================
+    function generateClientSideExport(data, format) {
+      const flags = data.flags || [];
+      const counts = data.flagCounts || {};
+      const clars = data.clarifications || [];
+      const ts = Date.now();
+      const aid = data.analysisId || 'export';
+
+      if (format === 'json') {
+        const payload = {
+          quotescout_version: '1.7',
+          exported_at: new Date().toISOString(),
+          analysis_id: data.analysisId || null,
+          resume_url: data.resumeUrl || window.location.href,
+          verdict: data.verdict || null,
+          verdict_reason: data.verdictReason || '',
+          summary: data.summary || '',
+          customer_clarifications: clars,
+          flag_counts: counts,
+          flags,
+          dimensions: data.dimensions || [],
+          disclaimer: 'All flags require verification by qualified engineering personnel before pricing.',
+        };
+        return {
+          content: JSON.stringify(payload, null, 2),
+          filename: `quotescout-${aid}-${ts}.json`,
+          label: 'JSON · full structured data',
+        };
+      }
+
+      if (format === 'csv') {
+        // CSV: one row per flag
+        const escape = (v) => {
+          if (v === null || v === undefined) return '';
+          const s = String(v).replace(/"/g, '""');
+          return /[",\n\r]/.test(s) ? `"${s}"` : s;
+        };
+        const header = ['severity', 'category', 'title', 'confidence', 'action', 'description', 'impact', 'cost_estimate', 'location'];
+        const rows = [header.join(',')];
+        flags.forEach(f => {
+          rows.push([
+            escape(f.severity),
+            escape(f.category),
+            escape(f.title),
+            escape(f.confidence),
+            escape(f.recommendedAction),
+            escape(f.description),
+            escape(f.impact),
+            escape(f.estimatedCostRange),
+            escape(f.location),
+          ].join(','));
+        });
+        // Prepend a summary block as comments
+        const summaryLines = [
+          `# QuoteScout analysis ${data.analysisId || ''}`,
+          `# Verdict: ${data.verdict || 'n/a'}`,
+          `# Summary: ${(data.summary || '').replace(/[\r\n]+/g, ' ')}`,
+          `# Counts: RED=${counts.red||0} AMBER=${counts.amber||0} YELLOW=${counts.yellow||0} PURPLE=${counts.purple||0}`,
+          ``,
+        ];
+        return {
+          content: summaryLines.join('\n') + rows.join('\n'),
+          filename: `quotescout-${aid}-${ts}.csv`,
+          label: 'CSV · one row per flag',
+        };
+      }
+
+      if (format === 'markdown') {
+        const lines = [];
+        lines.push(`# QuoteScout Risk Analysis`);
+        lines.push(``);
+        lines.push(`**Analysis ID:** ${data.analysisId || '—'}`);
+        lines.push(`**Verdict:** ${data.verdict || 'n/a'}${data.verdictReason ? ` — ${data.verdictReason}` : ''}`);
+        lines.push(``);
+        lines.push(`## Executive summary`);
+        lines.push(``);
+        lines.push(data.summary || '_(no summary)_');
+        lines.push(``);
+        lines.push(`**Counts:** 🔴 ${counts.red||0} RED · 🟠 ${counts.amber||0} AMBER · 🟡 ${counts.yellow||0} YELLOW · 🟣 ${counts.purple||0} PURPLE`);
+        lines.push(``);
+        if (clars.length > 0) {
+          lines.push(`## Ask the customer (${clars.length})`);
+          lines.push(``);
+          clars.forEach((c, i) => {
+            lines.push(`${i + 1}. **${c.question || ''}** ${c.priority ? `_[${c.priority.replace('_', ' ')}]_` : ''}`);
+            if (c.why) lines.push(`   _Why:_ ${c.why}`);
+          });
+          lines.push(``);
+        }
+        lines.push(`## Findings`);
+        lines.push(``);
+        flags.forEach(f => {
+          lines.push(`### ${(f.severity || '').toUpperCase()} · ${f.category || ''} · ${f.confidence || '—'}%`);
+          lines.push(``);
+          lines.push(`**${f.title || ''}**`);
+          lines.push(``);
+          if (f.recommendedAction) {
+            lines.push(`> **Action:** ${f.recommendedAction}`);
+            lines.push(``);
+          }
+          if (f.description) {
+            lines.push(f.description);
+            lines.push(``);
+          }
+          if (f.impact) lines.push(`*Impact:* ${f.impact}`);
+          if (f.estimatedCostRange) lines.push(`*Cost:* ${f.estimatedCostRange}`);
+          if (f.location) lines.push(`*Location:* ${f.location}`);
+          lines.push(``);
+        });
+        lines.push(`---`);
+        lines.push(`_All flags require verification by qualified engineering personnel before pricing._`);
+        return {
+          content: lines.join('\n'),
+          filename: `quotescout-${aid}-${ts}.md`,
+          label: 'Markdown · human-readable',
+        };
+      }
+
+      return { content: 'Unknown format', filename: 'unknown.txt', label: 'Error' };
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
