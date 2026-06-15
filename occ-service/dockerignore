@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+validate_occ.py
+make_fixtures.py
+real1.stp
+real2.stp
+fixture_thinwall.step
+README.md
