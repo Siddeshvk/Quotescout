@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop Capability Profile · QuoteScout</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* Profile-specific layout (kept inline so it works even if style.css is cached old) */
+    .profile-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 32px;
+      align-items: start;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .profile-grid { grid-template-columns: 1fr; }
+      .why-sidebar { order: -1; }
+    }
+
+    .why-sidebar {
+      position: sticky;
+      top: 24px;
+      padding: 20px;
+      background: #f8f9fb;
+      border: 1px solid #e2e6ee;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .why-sidebar h3 { margin: 0 0 12px 0; font-size: 15px; color: #1a2540; }
+    .why-sidebar ul { margin: 0; padding-left: 18px; }
+    .why-sidebar li { margin-bottom: 10px; }
+    .why-sidebar strong { color: #1a2540; }
+
+    .why-mobile {
+      display: none;
+      background: #f8f9fb;
+      border: 1px solid #e2e6ee;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 16px 0 24px 0;
+      font-size: 14px;
+    }
+    .why-mobile ul { margin: 8px 0 0 0; padding-left: 18px; }
+    .why-mobile li { margin-bottom: 4px; }
+    @media (max-width: 900px) {
+      .why-sidebar { display: none; }
+      .why-mobile { display: block; }
+    }
+
+    .field-group {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eef0f4;
+    }
+    .field-group:last-of-type { border-bottom: none; }
+    .field-label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      color: #1a2540;
+      margin-bottom: 4px;
+    }
+    .field-help {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .field-group textarea,
+    .field-group input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d4d8e1;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .field-group textarea { min-height: 80px; resize: vertical; }
+    .field-group textarea::placeholder,
+    .field-group input::placeholder { color: #9ca3af; font-style: italic; }
+
+    .cert-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .cert-chip {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #d4d8e1;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      user-select: none;
+      transition: all 0.15s;
+      background: white;
+    }
+    .cert-chip:hover { border-color: #667eea; background: #f5f7ff; }
+    .cert-chip input { margin-right: 8px; }
+    .cert-chip.checked {
+      background: #eef2ff;
+      border-color: #667eea;
+      color: #1a2540;
+      font-weight: 600;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-top: 8px;
+    }
+    .btn-secondary {
+      padding: 10px 16px;
+      background: white;
+      border: 1px solid #d4d8e1;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #1a2540;
+    }
+    .btn-secondary:hover { border-color: #667eea; }
+
+    .status-banner {
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      display: none;
+    }
+    .status-banner.success {
+      display: block;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .status-banner.error {
+      display: block;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .lead-time-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 500px) { .lead-time-row { grid-template-columns: 1fr; } }
+
+    .intro {
+      max-width: 1200px;
+      margin: 0 auto 24px auto;
+    }
+    .intro h1 { margin-bottom: 8px; }
+    .intro p { color: #4b5563; line-height: 1.55; }
+  </style>
+</head>
+<body>
+
+<!-- Reuse your existing site header here. If you have a partial/include pattern, drop it in.
+     Otherwise this minimal nav matches the rest of the app. -->
+<nav style="padding: 16px 24px; border-bottom: 1px solid #eef0f4; max-width: 1200px; margin: 0 auto;">
+  <a href="/" style="font-weight: 700; text-decoration: none; color: #1a2540; font-size: 18px;">QuoteScout</a>
+  <span style="float: right;">
+    <a href="/app.html" style="color: #4b5563; text-decoration: none; margin-right: 16px;">Analyze RFQ</a>
+    <a href="/profile.html" style="color: #1a2540; font-weight: 600; text-decoration: none;">Shop Profile</a>
+  </span>
+</nav>
+
+<main style="padding: 32px 24px;">
+
+  <div class="intro">
+    <h1>Shop Capability Profile</h1>
+    <p>QuoteScout uses this to score every RFQ against <em>your</em> actual capabilities, capacity, and red lines — not a generic shop. The more you fill in, the sharper the analysis. Stored privately in your browser only. <strong>Nothing leaves this device unless you click "Save Profile."</strong></p>
+
+    <!-- Mobile "Why fill this out?" - shows above form on small screens -->
+    <div class="why-mobile">
+      <strong>Why fill this out?</strong>
+      <ul>
+        <li>Flags requirements you can't meet (certs, materials, processes) before you waste time quoting</li>
+        <li>Catches unrealistic delivery dates against your real backlog</li>
+        <li>Dollarizes risk using <em>your</em> shop rate, not industry average</li>
+        <li>Distinguishes "we can do this" from "we can do this in spec, on time, profitably"</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="profile-grid">
+
+    <!-- LEFT: form -->
+    <div>
+      <div id="statusBanner" class="status-banner"></div>
+
+      <form id="profileForm" onsubmit="return false;">
+
+        <!-- Equipment -->
+        <div class="field-group">
+          <label class="field-label" for="equipment">Equipment &amp; Machines</label>
+          <div class="field-help">List spindle counts, makes, models, work envelopes. Be specific about what you DON'T have — that's a flag generator.</div>
+          <textarea id="equipment" name="equipment" rows="4" placeholder="e.g. 3x Haas VF-4 (50x20x25), 2x DMG Mori NLX2500 (live tool, sub-spindle), 1x Mazak QT-200, 1x Hardinge T-42 surface grinder. No EDM. No 5-axis. No wire."></textarea>
+        </div>
+
+        <!-- Certifications: checkboxes for common, text for other -->
+        <div class="field-group">
+          <label class="field-label">Certifications Held</label>
+          <div class="field-help">Click each cert you currently hold (not in-progress). Anything missing flags as a capability gap if the RFQ requires it.</div>
+          <div class="cert-grid" id="certGrid">
+            <!-- Populated by JS so we can add/remove certs without HTML churn -->
+          </div>
+          <input type="text" id="certs_other" name="certs_other" placeholder="Other certs (comma-separated): e.g. NIST 800-171, NQA-1, ITAR, IATF 16949">
+        </div>
+
+        <!-- Certs NOT held (intentional) -->
+        <div class="field-group">
+          <label class="field-label" for="certs_not_held">Certifications Explicitly NOT Held</label>
+          <div class="field-help">Optional. If you're routinely asked for certs you've decided NOT to pursue, list them here so analysis flags them faster.</div>
+          <input type="text" id="certs_not_held" name="certs_not_held" placeholder="e.g. NADCAP Welding, NADCAP Heat Treat, ITAR (we outsource)">
+        </div>
+
+        <!-- Material Exclusions (NEW) -->
+        <div class="field-group">
+          <label class="field-label" for="material_exclusions">Material Exclusions (Hard No's)</label>
+          <div class="field-help">Materials you refuse to cut. Hard constraint — analysis will return RECOMMEND_NO_BID if these show up in the RFQ.</div>
+          <input type="text" id="material_exclusions" name="material_exclusions" placeholder="e.g. No Magnesium, No Beryllium, No Inconel 718, No graphite-loaded composites, No DU">
+        </div>
+
+        <!-- AVL -->
+        <div class="field-group">
+          <label class="field-label" for="avl_approved_vendor_list">Approved Vendor List (Outside Processes)</label>
+          <div class="field-help">Your qualified vendors for heat treat, plating, NDT, coating, etc. Helps the AI assess lead time and process risk.</div>
+          <textarea id="avl_approved_vendor_list" name="avl_approved_vendor_list" rows="3" placeholder="e.g. Heat treat: Bodycote, Paulo. Black oxide: in-house. Anodize: in-house Type II only, outsource Type III. Penetrant: ABC NDT. Gold plating: not approved — flag any spec requiring it."></textarea>
+        </div>
+
+        <!-- Capacity envelope -->
+        <div class="field-group">
+          <label class="field-label" for="capacity_envelope">Capacity Envelope</label>
+          <div class="field-help">Max part sizes, weight limits, lot quantities you target.</div>
+          <textarea id="capacity_envelope" name="capacity_envelope" rows="3" placeholder="e.g. Max envelope 50x20x25 inches. Max part weight 200 lb. Sweet-spot lot size 10-500. Will run prototypes (qty 1-5) but priced accordingly."></textarea>
+        </div>
+
+        <!-- Typical work -->
+        <div class="field-group">
+          <label class="field-label" for="typical_work">Typical Work / Specialties</label>
+          <div class="field-help">Industries, part types, tolerance bands, materials you regularly run.</div>
+          <textarea id="typical_work" name="typical_work" rows="3" placeholder="e.g. Aerospace structural brackets (6061-T6, 7075-T6, Ti-6Al-4V). Medical instrument bodies (303/316L). Tolerances down to ±0.0005 routine, ±0.0002 with verification. Surface finish Ra 16 standard."></textarea>
+        </div>
+
+        <!-- Shop rate (multi-rate, NEW) -->
+        <div class="field-group">
+          <label class="field-label" for="shop_rate_blended">Shop Rate</label>
+          <div class="field-help">List blended OR by category (programming, 3-axis, 5-axis, EDM, inspection). The AI will use the matching rate when dollarizing risk on specific features.</div>
+          <textarea id="shop_rate_blended" name="shop_rate_blended" rows="3" placeholder="e.g. Blended $95/hr. Or: Programming $125/hr, 3-axis mill $85/hr, 5-axis $150/hr, lathe $90/hr, CMM/inspection $110/hr, Surface grind $95/hr."></textarea>
+        </div>
+
+        <!-- Lead time / backlog (NEW) -->
+        <div class="field-group">
+          <label class="field-label">Lead Time &amp; Current Backlog</label>
+          <div class="field-help">Used to flag unrealistic delivery dates. Best estimate is fine.</div>
+          <div class="lead-time-row">
+            <input type="text" id="lead_time_weeks" name="lead_time_weeks" placeholder="Standard lead time (e.g. 6-8 weeks)">
+            <input type="text" id="current_backlog_weeks" name="current_backlog_weeks" placeholder="Current backlog (e.g. booked 4 weeks)">
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="button-row">
+          <button type="button" id="continueBtn" class="btn-primary" style="padding: 10px 22px; background: #1a2540; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;">Continue to Analyze RFQ →</button>
+          <button type="button" id="saveBtn" class="btn-secondary">Save Profile</button>
+          <button type="button" id="exportBtn" class="btn-secondary">Export Profile (.json)</button>
+          <button type="button" id="importBtn" class="btn-secondary">Import Profile</button>
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+          <button type="button" id="clearBtn" class="btn-secondary" style="color: #991b1b;">Clear Profile</button>
+        </div>
+        <p style="margin: 12px 0 0; font-size: 12.5px; color: #6b7280;">This step is optional. <strong>Continue</strong> saves anything you've entered and takes you to the upload page — you can edit your profile any time from the Analyze page.</p>
+
+      </form>
+    </div>
+
+    <!-- RIGHT: Why fill this out? sidebar (desktop only) -->
+    <aside class="why-sidebar">
+      <h3>Why fill this out?</h3>
+      <ul>
+        <li><strong>Capability gaps surface early.</strong> RFQ wants NADCAP Welding and you don't have it? Flagged before you spend an hour quoting.</li>
+        <li><strong>Material red lines respected.</strong> Listed material exclusion shows up in the RFQ → automatic NO-BID recommendation.</li>
+        <li><strong>Realistic lead times.</strong> 3-week delivery on an 8-week-lead-time job? Flagged as a blocking clarification.</li>
+        <li><strong>Dollarized risk uses YOUR rate.</strong> CMM time on a tight feature gets costed at <em>your</em> $/hr, not a generic estimate.</li>
+        <li><strong>Outside process risk.</strong> RFQ requires gold plating but it's not on your AVL? Lead time + vendor risk flagged.</li>
+        <li><strong>Private by design.</strong> Stored in your browser. Export to a file to back up or move to another machine.</li>
+      </ul>
+    </aside>
+
+  </div>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // NDA gate — the shop profile is optional, but still behind the NDA. Anyone who
+  // hasn't signed (no qs_email in localStorage) is sent to sign first. This closes
+  // the landing → shop profile → analyze bypass. Uses replace() so the unsigned
+  // page isn't left in history.
+  try {
+    if (!localStorage.getItem('qs_email')) {
+      window.location.replace('/nda.html');
+      return;
+    }
+  } catch (e) {
+    window.location.replace('/nda.html');
+    return;
+  }
+
+  const STORAGE_KEY = 'qs_profile';
+  const PROFILE_VERSION = 2;
+
+  const COMMON_CERTS = [
+    'ISO 9001',
+    'AS9100',
+    'ISO 13485',
+    'IATF 16949',
+    'ITAR Registered',
+    'NADCAP - Welding',
+    'NADCAP - NDT',
+    'NADCAP - Heat Treat',
+    'NADCAP - Chem Processing',
+    'NADCAP - Coatings',
+    'ISO 14001',
+    'ISO 17025',
+    'NIST 800-171',
+    'CMMC Level 2',
+  ];
+
+  function $(id) { return document.getElementById(id); }
+
+  function showStatus(message, isError) {
+    const banner = $('statusBanner');
+    banner.textContent = message;
+    banner.className = 'status-banner ' + (isError ? 'error' : 'success');
+    setTimeout(function () { banner.className = 'status-banner'; }, 4000);
+  }
+
+  function buildCertGrid() {
+    const grid = $('certGrid');
+    grid.innerHTML = '';
+    COMMON_CERTS.forEach(function (cert) {
+      const label = document.createElement('label');
+      label.className = 'cert-chip';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.name = 'cert';
+      cb.value = cert;
+      cb.addEventListener('change', function () {
+        label.classList.toggle('checked', cb.checked);
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(cert));
+      grid.appendChild(label);
+    });
+  }
+
+  function readProfile() {
+    const certs = [];
+    document.querySelectorAll('input[name="cert"]:checked').forEach(function (cb) {
+      certs.push(cb.value);
+    });
+    return {
+      version: PROFILE_VERSION,
+      equipment: $('equipment').value.trim(),
+      certs_held: certs,
+      certs_other: $('certs_other').value.trim(),
+      certs_not_held: $('certs_not_held').value.trim(),
+      material_exclusions: $('material_exclusions').value.trim(),
+      avl_approved_vendor_list: $('avl_approved_vendor_list').value.trim(),
+      capacity_envelope: $('capacity_envelope').value.trim(),
+      typical_work: $('typical_work').value.trim(),
+      shop_rate_blended: $('shop_rate_blended').value.trim(),
+      lead_time_weeks: $('lead_time_weeks').value.trim(),
+      current_backlog_weeks: $('current_backlog_weeks').value.trim(),
+      saved_at: new Date().toISOString(),
+    };
+  }
+
+  function writeProfile(p) {
+    if (!p || typeof p !== 'object') return;
+
+    // Equipment / textareas
+    $('equipment').value = p.equipment || '';
+    $('certs_other').value = p.certs_other || '';
+    $('certs_not_held').value = p.certs_not_held || '';
+    $('material_exclusions').value = p.material_exclusions || '';
+    $('avl_approved_vendor_list').value = p.avl_approved_vendor_list || '';
+    $('capacity_envelope').value = p.capacity_envelope || '';
+    $('typical_work').value = p.typical_work || '';
+    $('shop_rate_blended').value = p.shop_rate_blended || p.shop_rate || '';
+    $('lead_time_weeks').value = p.lead_time_weeks || '';
+    $('current_backlog_weeks').value = p.current_backlog_weeks || '';
+
+    // Certs checkboxes (backwards compat: if v1 stored certs_held as a string, try to split it)
+    let heldList = [];
+    if (Array.isArray(p.certs_held)) {
+      heldList = p.certs_held;
+    } else if (typeof p.certs_held === 'string' && p.certs_held.trim()) {
+      heldList = p.certs_held.split(/[,;]\s*/).map(function (s) { return s.trim(); });
+    }
+    document.querySelectorAll('input[name="cert"]').forEach(function (cb) {
+      const match = heldList.some(function (h) {
+        return h.toLowerCase().replace(/\s+/g, '') === cb.value.toLowerCase().replace(/\s+/g, '');
+      });
+      cb.checked = match;
+      cb.parentElement.classList.toggle('checked', match);
+    });
+
+    // Any unmatched legacy certs → dump into certs_other
+    const checkedValues = COMMON_CERTS.map(function (c) {
+      return c.toLowerCase().replace(/\s+/g, '');
+    });
+    const leftovers = heldList.filter(function (h) {
+      return !checkedValues.includes(h.toLowerCase().replace(/\s+/g, ''));
+    });
+    if (leftovers.length && !$('certs_other').value) {
+      $('certs_other').value = leftovers.join(', ');
+    }
+  }
+
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      writeProfile(p);
+    } catch (e) {
+      console.error('Could not load profile from localStorage:', e);
+    }
+  }
+
+  function saveToStorage() {
+    try {
+      const p = readProfile();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+      showStatus('Profile saved. The next RFQ you analyze will use this context.');
+    } catch (e) {
+      showStatus('Could not save: ' + e.message, true);
+    }
+  }
+
+  function exportProfile() {
+    const p = readProfile();
+    const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = 'quotescout-profile-' + ts + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus('Profile exported. Keep the file somewhere safe (Dropbox, work email, etc.).');
+  }
+
+  function importProfile(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const p = JSON.parse(e.target.result);
+        if (!p || typeof p !== 'object') throw new Error('Invalid profile file.');
+        writeProfile(p);
+        // Auto-save so it persists
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(readProfile()));
+        showStatus('Profile imported and saved.');
+      } catch (err) {
+        showStatus('Import failed: ' + err.message, true);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearProfile() {
+    if (!confirm('Clear the saved profile from this browser? Export first if you want to keep a backup.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    // Reset form
+    document.querySelectorAll('input[name="cert"]').forEach(function (cb) {
+      cb.checked = false;
+      cb.parentElement.classList.remove('checked');
+    });
+    ['equipment', 'certs_other', 'certs_not_held', 'material_exclusions',
+     'avl_approved_vendor_list', 'capacity_envelope', 'typical_work',
+     'shop_rate_blended', 'lead_time_weeks', 'current_backlog_weeks']
+      .forEach(function (id) { $(id).value = ''; });
+    showStatus('Profile cleared.');
+  }
+
+  // Wire up
+  document.addEventListener('DOMContentLoaded', function () {
+    buildCertGrid();
+    loadFromStorage();
+
+    $('saveBtn').addEventListener('click', saveToStorage);
+    $('continueBtn').addEventListener('click', function () {
+      // Persist anything they entered (optional), then continue to the upload page.
+      try { saveToStorage(); } catch (e) {}
+      window.location.href = '/app.html';
+    });
+    $('exportBtn').addEventListener('click', exportProfile);
+    $('importBtn').addEventListener('click', function () { $('importFile').click(); });
+    $('importFile').addEventListener('change', function (e) {
+      if (e.target.files && e.target.files[0]) importProfile(e.target.files[0]);
+      e.target.value = ''; // reset so same file can be re-imported
+    });
+    $('clearBtn').addEventListener('click', clearProfile);
+  });
+})();
+</script>
+
+</body>
+</html>
